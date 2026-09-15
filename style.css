@@ -3440,3 +3440,56 @@ input:-webkit-autofill:active {
   color: var(--status-danger);
   background: rgba(239, 68, 68, 0.15);
 }
+
+/* HISTORY LOGS STYLING */
+.personal-logs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.personal-log-row {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.2fr;
+  align-items: center;
+  background: rgba(14, 20, 32, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-left: 3px solid var(--text-dim);
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  transition: all 0.15s ease;
+}
+
+.personal-log-row.win {
+  border-left-color: var(--status-success);
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.personal-log-row.loss {
+  border-left-color: var(--status-danger);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.personal-log-row.spectate {
+  border-left-color: var(--accent-amber);
+}
+
+.hist-multi-pill {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-main);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.hist-multi-pill.high {
+  background: rgba(255, 107, 34, 0.18);
+  color: var(--accent-orange);
+  border: 1px solid rgba(255, 107, 34, 0.3);
+}

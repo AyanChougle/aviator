@@ -248,35 +248,35 @@
       btnAddBetPanel: document.getElementById("btn-add-bet-panel"),
       actionFeedback: document.getElementById("action-feedback"),
 
-      // Canvas & Flight Overlays
-      canvas: document.getElementById("canvas-flight-deck"),
-      hudContainer: document.getElementById("hud-multiplier-box"),
-      hudMultiplier: document.getElementById("hud-live-multiplier"),
-      countdownOverlay: document.getElementById("overlay-countdown"),
+      // Canvas & Flight Overlays (Matched 100% with index.html IDs)
+      canvas: document.getElementById("flight-canvas"),
+      hudContainer: document.getElementById("hud-multiplier-container"),
+      hudMultiplier: document.getElementById("hud-multiplier"),
+      countdownOverlay: document.getElementById("countdown-overlay"),
       countdownDigits: document.getElementById("countdown-digits"),
-      crashOverlay: document.getElementById("overlay-crashed"),
-      crashMultiplier: document.getElementById("crashed-multiplier-val"),
+      crashOverlay: document.getElementById("crash-overlay"),
+      crashMultiplier: document.getElementById("crash-multiplier"),
       playerResultBanner: document.getElementById("player-result-banner"),
 
       // Telemetry
-      telemAlt: document.getElementById("telem-altitude-val"),
-      telemVel: document.getElementById("telem-speed-val"),
-      telemTraj: document.getElementById("telem-trajectory-val"),
+      telemAlt: document.getElementById("telem-alt"),
+      telemVel: document.getElementById("telem-vel"),
+      telemTraj: document.getElementById("telem-traj"),
 
       // Squadron Live Bets Table
       squadronBetsTable: document.getElementById("squadron-bets-table"),
       squadronCountBadge: document.getElementById("squadron-count-badge"),
-      activityFeedList: document.getElementById("live-activity-feed"),
+      activityFeedList: document.getElementById("activity-feed-list"),
       footerLiveClock: document.getElementById("footer-live-clock"),
 
       // Wallet / Payment
       cardWalletBottom: document.getElementById("card-wallet-bottom"),
       userBalanceDisplay: document.getElementById("user-vc-display"),
-      totalStakedDisplay: document.getElementById("dossier-total-staked"),
-      totalWinsDisplay: document.getElementById("dossier-total-wins"),
+      totalStakedDisplay: document.getElementById("stat-total-staked"),
+      totalWinsDisplay: document.getElementById("stat-total-wins"),
       paymentCurrentBalance: document.getElementById("payment-current-balance"),
-      depositInput: document.getElementById("deposit-amount-input"),
-      depositChips: document.querySelectorAll(".deposit-chip-btn"),
+      depositInput: document.getElementById("input-deposit-amount"),
+      depositChips: document.querySelectorAll("#screen-payment .deposit-chip-btn"),
       btnConfirmDeposit: document.getElementById("btn-confirm-deposit"),
       btnPaymentProceed: document.getElementById("btn-payment-proceed"),
       depositAlert: document.getElementById("deposit-status-alert"),
@@ -285,13 +285,13 @@
       modalWallet: document.getElementById("modal-wallet"),
       tabWalletDeposit: document.getElementById("tab-wallet-deposit"),
       tabWalletWithdraw: document.getElementById("tab-wallet-withdraw"),
-      walletPanelDeposit: document.getElementById("wallet-panel-deposit"),
-      walletPanelWithdraw: document.getElementById("wallet-panel-withdraw"),
+      walletPanelDeposit: document.getElementById("wallet-tab-content-deposit"),
+      walletPanelWithdraw: document.getElementById("wallet-tab-content-withdraw"),
       btnWalletClose: document.getElementById("btn-wallet-close"),
       modalWalletBalanceVal: document.getElementById("modal-wallet-balance-val"),
-      modalDepositInput: document.getElementById("modal-deposit-input"),
+      modalDepositInput: document.getElementById("modal-input-deposit-amount"),
       depositUtrInput: document.getElementById("deposit-utr-input"),
-      modalDepositChips: document.querySelectorAll("#wallet-panel-deposit .deposit-chip-btn"),
+      modalDepositChips: document.querySelectorAll("#wallet-tab-content-deposit .deposit-chip-btn"),
       btnModalDepositConfirm: document.getElementById("btn-modal-deposit-confirm"),
 
       typeOptBank: document.getElementById("type-opt-bank"),
@@ -1313,13 +1313,18 @@
   function resizeCanvas() {
     if (!DOM.canvas || !DOM.canvas.parentElement) return;
     const rect = DOM.canvas.parentElement.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+
     const dpi = window.devicePixelRatio || 1;
-    DOM.canvas.width = rect.width * dpi;
-    DOM.canvas.height = rect.height * dpi;
+    DOM.canvas.width = Math.floor(rect.width * dpi);
+    DOM.canvas.height = Math.floor(rect.height * dpi);
+    DOM.canvas.style.width = rect.width + "px";
+    DOM.canvas.style.height = rect.height + "px";
+    
     canvasWidth = rect.width;
     canvasHeight = rect.height;
     canvasCtx = DOM.canvas.getContext("2d");
-    canvasCtx.scale(dpi, dpi);
+    canvasCtx.setTransform(dpi, 0, 0, dpi, 0, 0);
   }
   window.addEventListener("resize", resizeCanvas);
 
@@ -1640,8 +1645,9 @@
       });
     }
 
+    // Modal Deposit Input & Dynamic Button Sync
     if (DOM.modalDepositInput) {
-      DOM.modalDepositInput.addEventListener("input", function () {
+      const handleModalDepositChange = function () {
         const val = parseFloat(DOM.modalDepositInput.value) || 0;
         if (DOM.modalDepositChips) {
           DOM.modalDepositChips.forEach(function (c) {
@@ -1653,26 +1659,25 @@
         if (DOM.btnModalDepositConfirm) {
           DOM.btnModalDepositConfirm.textContent = "ADD " + formatRupees(val) + " TO WALLET";
         }
+      };
+      DOM.modalDepositInput.addEventListener("input", handleModalDepositChange);
+      DOM.modalDepositInput.addEventListener("change", handleModalDepositChange);
+      DOM.modalDepositInput.addEventListener("keyup", handleModalDepositChange);
+    }
+
+    if (DOM.modalDepositChips) {
+      DOM.modalDepositChips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          DOM.modalDepositChips.forEach(function (c) { c.classList.remove("selected"); });
+          chip.classList.add("selected");
+          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
+          if (DOM.modalDepositInput) DOM.modalDepositInput.value = amt;
+          if (DOM.btnModalDepositConfirm) DOM.btnModalDepositConfirm.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
+        });
       });
     }
 
-    if (DOM.depositInput) {
-      DOM.depositInput.addEventListener("input", function () {
-        const val = parseFloat(DOM.depositInput.value) || 0;
-        if (DOM.depositChips) {
-          DOM.depositChips.forEach(function (c) {
-            const chipAmt = parseFloat(c.getAttribute("data-amt"));
-            if (chipAmt === val) c.classList.add("selected");
-            else c.classList.remove("selected");
-          });
-        }
-        if (DOM.btnConfirmDeposit) {
-          DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(val) + " TO WALLET";
-        }
-      });
-    }
-
-    // Modal Deposit Action
+    // Modal Deposit Action (Adds the exact chosen/typed amount to wallet and cloud)
     if (DOM.btnModalDepositConfirm) {
       DOM.btnModalDepositConfirm.addEventListener("click", function () {
         const amt = parseFloat(DOM.modalDepositInput ? DOM.modalDepositInput.value : 100) || 100;
@@ -1709,6 +1714,36 @@
             balance: savedState.virtualBalance
           }, { merge: true }).catch(function () {});
         }
+      });
+    }
+
+    if (DOM.depositInput) {
+      const handlePaymentDepositChange = function () {
+        const val = parseFloat(DOM.depositInput.value) || 0;
+        if (DOM.depositChips) {
+          DOM.depositChips.forEach(function (c) {
+            const chipAmt = parseFloat(c.getAttribute("data-amt"));
+            if (chipAmt === val) c.classList.add("selected");
+            else c.classList.remove("selected");
+          });
+        }
+        if (DOM.btnConfirmDeposit) {
+          DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(val) + " TO WALLET";
+        }
+      };
+      DOM.depositInput.addEventListener("input", handlePaymentDepositChange);
+      DOM.depositInput.addEventListener("change", handlePaymentDepositChange);
+    }
+
+    if (DOM.depositChips) {
+      DOM.depositChips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          DOM.depositChips.forEach(function (c) { c.classList.remove("selected"); });
+          chip.classList.add("selected");
+          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
+          if (DOM.depositInput) DOM.depositInput.value = amt;
+          if (DOM.btnConfirmDeposit) DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
+        });
       });
     }
 
@@ -1796,29 +1831,7 @@
       });
     }
 
-    if (DOM.modalDepositChips) {
-      DOM.modalDepositChips.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          DOM.modalDepositChips.forEach(function (c) { c.classList.remove("selected"); });
-          chip.classList.add("selected");
-          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
-          if (DOM.modalDepositInput) DOM.modalDepositInput.value = amt;
-          if (DOM.btnModalDepositConfirm) DOM.btnModalDepositConfirm.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
-        });
-      });
-    }
 
-    if (DOM.depositChips) {
-      DOM.depositChips.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          DOM.depositChips.forEach(function (c) { c.classList.remove("selected"); });
-          chip.classList.add("selected");
-          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
-          if (DOM.depositInput) DOM.depositInput.value = amt;
-          if (DOM.btnConfirmDeposit) DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
-        });
-      });
-    }
   }
 
   //====================================================================
@@ -1841,18 +1854,34 @@
   function renderPersonalHistoryLogs() {
     if (!DOM.personalLogsContainer) return;
     if (!savedState.history || savedState.history.length === 0) {
-      DOM.personalLogsContainer.innerHTML = '<div class="empty-logs">No completed flights yet.</div>';
+      DOM.personalLogsContainer.innerHTML = '<div class="empty-logs">No completed flights yet. Stake or watch flights to see live history.</div>';
       return;
     }
 
     let html = "";
-    savedState.history.slice(0, 20).forEach(function (h) {
+    savedState.history.slice(0, 30).forEach(function (h) {
       const isWin = h.status === "WIN";
-      html += '<div class="personal-log-row ' + (isWin ? "win" : "loss") + '">' +
-        '<div><strong>ROUND #' + h.round + '</strong> (B' + (h.slot || 1) + ')<br><small>' + (h.time || "") + '</small></div>' +
-        '<div>Stake: ' + formatRupees(h.stake) + '</div>' +
-        '<div style="text-align:right;"><strong>' + (isWin ? "+" + formatRupees(h.profit) : "-" + formatRupees(h.stake)) + '</strong><br>' +
-        '<small>' + (isWin ? h.multiplier.toFixed(2) + "x" : "FLEW AWAY") + '</small></div>' +
+      const isLoss = h.status === "LOSS";
+      const isSpectate = h.status === "SPECTATE";
+
+      let statusClass = isWin ? "win" : isLoss ? "loss" : "spectate";
+      let multiBadge = '<span class="hist-multi-pill ' + (h.multiplier >= 2.0 ? 'high' : '') + '">' + h.multiplier.toFixed(2) + 'x</span>';
+
+      let payoutHtml = '';
+      if (isWin) {
+        payoutHtml = '<strong style="color:var(--status-success);">+' + formatRupees(h.profit) + '</strong><br><small style="color:var(--text-dim);">Stake: ' + formatRupees(h.stake) + '</small>';
+      } else if (isLoss) {
+        payoutHtml = '<strong style="color:var(--status-danger);">-' + formatRupees(h.stake) + '</strong><br><small style="color:var(--text-dim);">Lost</small>';
+      } else {
+        payoutHtml = '<span style="color:var(--text-dim); font-size:10px;">SPECTATED</span><br><small style="color:var(--text-dim);">No Stake</small>';
+      }
+
+      const slotBadge = h.slot ? ' (B' + h.slot + ')' : '';
+
+      html += '<div class="personal-log-row ' + statusClass + '">' +
+        '<div><strong>ROUND #' + h.round + '</strong>' + slotBadge + '<br><small style="color:var(--text-muted);">' + (h.time || "") + '</small></div>' +
+        '<div style="text-align:center;">' + multiBadge + '</div>' +
+        '<div style="text-align:right;">' + payoutHtml + '</div>' +
         '</div>';
     });
     DOM.personalLogsContainer.innerHTML = html;
