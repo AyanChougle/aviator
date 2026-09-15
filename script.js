@@ -482,7 +482,7 @@
   //====================================================================
   // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE
   //====================================================================
-  const MAX_POSSIBLE_MULTIPLIER = 200.00; // Hard ceiling at 200.00x
+  const MAX_POSSIBLE_MULTIPLIER = 30.00; // Realistic crash multiplier ceiling (max 30.00x)
 
   function generateCrashPoint() {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
@@ -493,18 +493,29 @@
     }
     const r = Math.random();
     let point = 1.00;
-    if (r < 0.05) point = 1.00;
-    else if (r < 0.48) point = Math.floor((1.01 + Math.random() * 1.5) * 100) / 100;
-    else if (r < 0.82) point = Math.floor((2.00 + Math.random() * 4.2) * 100) / 100;
-    else if (r < 0.95) point = Math.floor((6.00 + Math.random() * 18.0) * 100) / 100;
-    else point = Math.floor((20.0 + Math.random() * 160.0) * 100) / 100;
+    if (r < 0.08) {
+      // Early crash (1.00x - 1.15x)
+      point = Math.floor((1.00 + Math.random() * 0.15) * 100) / 100;
+    } else if (r < 0.60) {
+      // Standard low multiplier (1.16x - 2.40x)
+      point = Math.floor((1.16 + Math.random() * 1.24) * 100) / 100;
+    } else if (r < 0.88) {
+      // Medium climb (2.41x - 5.50x)
+      point = Math.floor((2.41 + Math.random() * 3.09) * 100) / 100;
+    } else if (r < 0.97) {
+      // High altitude (5.51x - 12.00x)
+      point = Math.floor((5.51 + Math.random() * 6.49) * 100) / 100;
+    } else {
+      // Rare high flight (12.01x - 25.00x, capped at 30.00x)
+      point = Math.floor((12.01 + Math.random() * 12.99) * 100) / 100;
+    }
     
     return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.max(1.00, point));
   }
 
   function calculateMultiplier(elapsedSec) {
-    // Natural continuous upward acceleration: M = e^(0.058 * t^1.14)
-    const exponent = 0.058 * Math.pow(elapsedSec, 1.14);
+    // Natural steady aerodynamic climb (smooth realistic progression)
+    const exponent = 0.048 * Math.pow(elapsedSec, 1.10);
     const multi = Math.max(1.00, Math.exp(exponent));
     return Math.min(MAX_POSSIBLE_MULTIPLIER, multi);
   }
@@ -870,36 +881,34 @@
     const cy = canvasHeight * 0.55;
 
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+    // Clean subtle tactical radar concentric range rings
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 6]);
 
-    [60, 130, 200, 270].forEach(function (r) {
+    [60, 130, 200, 280].forEach(function (r) {
       ctx.beginPath();
       ctx.arc(cx, cy, r, 0, Math.PI * 2);
       ctx.stroke();
     });
 
+    // Crosshairs
     ctx.beginPath();
     ctx.moveTo(cx - 280, cy);
     ctx.lineTo(cx + 280, cy);
     ctx.moveTo(cx, cy - 280);
     ctx.lineTo(cx, cy + 280);
     ctx.stroke();
-    ctx.restore();
 
-    ctx.save();
-    ctx.fillStyle = "rgba(11, 17, 26, 0.4)";
+    // Runway baseline at the bottom
+    const startY = canvasHeight - 28;
+    ctx.setLineDash([]);
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
     ctx.beginPath();
-    ctx.moveTo(0, canvasHeight - 20);
-    ctx.lineTo(canvasWidth * 0.2, canvasHeight - 70);
-    ctx.lineTo(canvasWidth * 0.45, canvasHeight - 35);
-    ctx.lineTo(canvasWidth * 0.75, canvasHeight - 90);
-    ctx.lineTo(canvasWidth, canvasHeight - 40);
-    ctx.lineTo(canvasWidth, canvasHeight);
-    ctx.lineTo(0, canvasHeight);
-    ctx.closePath();
-    ctx.fill();
+    ctx.moveTo(20, startY);
+    ctx.lineTo(canvasWidth - 20, startY);
+    ctx.stroke();
+
     ctx.restore();
   }
 
@@ -910,15 +919,15 @@
 
     if (gameState === "RUNNING") {
       ctx.shadowColor = "#ff7300";
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = "rgba(255, 115, 0, 0.8)";
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = "rgba(255, 115, 0, 0.85)";
       ctx.beginPath();
-      ctx.arc(-14, 0, 3 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.arc(-14, 0, 3.5 + Math.random() * 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
 
-    ctx.fillStyle = "#ff7300";
+    ctx.fillStyle = "#ff6b22";
     ctx.beginPath();
     ctx.moveTo(14, 0);
     ctx.lineTo(-4, -10);
@@ -933,7 +942,7 @@
 
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.arc(4, 0, 2, 0, Math.PI * 2);
+    ctx.arc(4, 0, 2.2, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
@@ -949,30 +958,29 @@
     const startX = 35;
     const startY = canvasHeight - 28;
 
-    if (gameState === "BETTING" || gameState === "WAITING") {
-      drawPlane(ctx, startX + 25, startY, 0);
+    // DURING BETTING, LAUNCHING, OR WAITING:
+    // The aircraft sits parked calmly on the runway origin (NO premature flight or line!)
+    if (gameState === "BETTING" || gameState === "WAITING" || gameState === "LAUNCHING") {
+      drawPlane(ctx, startX, startY, 0);
       return;
     }
 
-    // UNPREDICTABLE FLIGHT TRAJECTORY:
-    // Path coordinates depend ONLY on elapsed flight time and liveMultiplier,
-    // never on crashMultiplier!
-    if (gameState === "RUNNING" || gameState === "LAUNCHING") {
+    // ACTIVE FLIGHT IN PROGRESS (RUNNING STATE ONLY)
+    if (gameState === "RUNNING") {
       const flightTime = Math.max(0, (performance.now() - launchStartTime) / 1000);
       
-      // Horizontal and vertical logarithmic progression that stays fluidly within bounds
       const spanX = canvasWidth * 0.76;
       const spanY = canvasHeight * 0.72;
       
       const t = flightTime;
       const factorX = 1 - Math.exp(-0.11 * t);
       const factorY = Math.pow(factorX, 1.25);
-      const microTurbulence = Math.sin(t * 3.6) * (1.5 + Math.min(2.5, t * 0.15));
+      const microTurbulence = Math.sin(t * 3.6) * (1.2 + Math.min(2.0, t * 0.1));
 
       const currX = startX + spanX * factorX;
       const currY = (startY - spanY * factorY) + microTurbulence;
 
-      // Add to live trail history (Full continuous unbroken trail from runway)
+      // Add to live trail history
       if (liveTrail.length === 0) {
         liveTrail.push({ x: startX, y: startY });
       }
@@ -982,10 +990,10 @@
       if (liveTrail.length > 1) {
         ctx.save();
 
-        // 1. Subtle illuminated gradient under the curve
+        // 1. Subtle smooth illuminated gradient under the curve
         const fillGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-        fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.20)");
-        fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.04)");
+        fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.16)");
+        fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.03)");
         fillGrad.addColorStop(1, "rgba(255, 107, 34, 0.0)");
 
         ctx.beginPath();
@@ -994,6 +1002,7 @@
           ctx.lineTo(liveTrail[i].x, liveTrail[i].y);
         }
         ctx.lineTo(currX, startY);
+        ctx.lineTo(startX, startY);
         ctx.closePath();
         ctx.fillStyle = fillGrad;
         ctx.fill();
@@ -1029,7 +1038,7 @@
       if (liveTrail.length > 1) {
         ctx.save();
         ctx.strokeStyle = "rgba(255, 107, 34, 0.4)";
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
         for (let i = 1; i < liveTrail.length; i++) {

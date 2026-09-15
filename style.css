@@ -2989,3 +2989,82 @@ input:checked + .slider:before {
   z-index: 2 !important; /* Rocket & Trail on Canvas (z-index: 4) fly IN FRONT of this text */
   opacity: 0.95;
 }
+
+
+/* ===================================================================
+   SLEEK MODERN TACTICAL UI CLEANUP & CUSTOM SCROLLBARS
+   =================================================================== */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) rgba(0, 0, 0, 0.2);
+}
+
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(10, 15, 24, 0.6);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-orange);
+}
+
+/* FLIGHT TELEMETRY FEED POLISH */
+.feed-list {
+  scrollbar-gutter: stable;
+  background: rgba(8, 12, 18, 0.6) !important;
+}
+
+.feed-item {
+  padding: 5px 8px !important;
+  font-size: 10px !important;
+  font-family: var(--font-mono) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+}
+
+.feed-item.crashed {
+  color: #ff4d4d !important;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.feed-item.cashed-out {
+  color: var(--status-success) !important;
+}
+
+/* SQUADRON BETS TABLE POLISH */
+.bets-table-wrapper {
+  scrollbar-gutter: stable;
+  background: rgba(8, 12, 18, 0.6) !important;
+}
+
+.squadron-table th {
+  padding: 8px 10px !important;
+  font-size: 9px !important;
+  letter-spacing: 0.8px !important;
+  background: rgba(18, 26, 38, 0.85) !important;
+  border-bottom: 1px solid var(--border-mid) !important;
+}
+
+.squadron-table td {
+  padding: 7px 10px !important;
+  font-size: 10px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important;
+}
+
+/* ARENA VIEWPORT & RADAR CONTAINER */
+.arena-viewport {
+  background: radial-gradient(circle at 60% 45%, #0e1726 0%, #06090e 100%) !important;
+}
