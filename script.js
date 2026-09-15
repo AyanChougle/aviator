@@ -213,8 +213,12 @@
   let currentAuthMode = "login";
   let userDocUnsubscribe = null;
 
-  // Live Flight Trajectory Points (UNPREDICTABLE)
-  let liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
+  // Dynamic Canvas Physics & Flight Trajectory Points
+  let canvasCtx = null;
+  let canvasWidth = 800;
+  let canvasHeight = 450;
+  let debrisParticles = [];
+  let liveTrail = [];
 
   //====================================================================
   // DOM ELEMENTS CACHE
@@ -526,7 +530,7 @@
         crashMultiplier = generateCrashPoint();
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         roundStartTime = performance.now();
-        liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
+        liveTrail = [];
 
         squadronPilots = generateSquadron(fleetCount);
         renderSquadronTable(true);
@@ -550,7 +554,7 @@
 
       case "RUNNING":
         launchStartTime = performance.now();
-        liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
+        liveTrail = [];
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
@@ -829,11 +833,6 @@
   //====================================================================
   // DYNAMIC UNPREDICTABLE CANVAS PHYSICS (NO FIXED ENDPOINT)
   //====================================================================
-  let canvasCtx = null;
-  let canvasWidth = 800;
-  let canvasHeight = 450;
-  let debrisParticles = [];
-
   function resizeCanvas() {
     if (!DOM.canvas || !DOM.canvas.parentElement) return;
     const rect = DOM.canvas.parentElement.getBoundingClientRect();
