@@ -631,7 +631,12 @@
     sharedRound.updatedAt = Date.now();
 
     window.AERO_FIREBASE.db.collection("game_state").doc("current_round").set(sharedRound, { merge: true })
-      .catch(function () {});
+      .then(function () {
+        console.log("[AeroCrash Multiplayer] Synced state to cloud:", sharedRound.state, "Round #" + sharedRound.roundNumber, "Target:", sharedRound.crashMultiplier + "x");
+      })
+      .catch(function (err) {
+        console.warn("[AeroCrash Multiplayer] Warning: game_state write blocked by Firestore Security Rules. Please publish open rules in Firebase Console -> Rules tab:", err.message);
+      });
   }
 
   //====================================================================
