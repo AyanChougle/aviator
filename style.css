@@ -3068,3 +3068,61 @@ input:checked + .slider:before {
 .arena-viewport {
   background: radial-gradient(circle at 60% 45%, #0e1726 0%, #06090e 100%) !important;
 }
+
+/* ===================================================================
+   AUTH INPUTS & AUTOFILL FIX (MATCH DARK COCKPIT THEME)
+   =================================================================== */
+.input-with-icon {
+  position: relative !important;
+  display: flex !important;
+  align-items: center !important;
+  width: 100% !important;
+}
+
+.input-with-icon .field-icon {
+  position: absolute !important;
+  left: 14px !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: var(--accent-orange) !important;
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+.input-with-icon input,
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+  width: 100% !important;
+  background-color: #121927 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  color: #f1f5f9 !important;
+  padding: 12px 14px 12px 44px !important;
+  border-radius: var(--radius-sm) !important;
+  font-family: var(--font-mono) !important;
+  font-size: 13px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease !important;
+}
+
+.input-with-icon input:focus,
+.form-group input:focus {
+  border-color: var(--accent-orange) !important;
+  box-shadow: 0 0 0 2px rgba(255, 107, 34, 0.25) !important;
+  background-color: #162032 !important;
+}
+
+/* Chrome / Edge autofill background override */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #121927 inset !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  caret-color: #f1f5f9 !important;
+  transition: background-color 5000s ease-in-out 0s !important;
+}

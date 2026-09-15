@@ -1779,17 +1779,20 @@
         tab.classList.add("active");
         currentAuthMode = tab.getAttribute("data-mode");
 
+        if (DOM.authStatusBox) {
+          DOM.authStatusBox.textContent = "";
+          DOM.authStatusBox.className = "auth-status-box";
+        }
+
         if (currentAuthMode === "register") {
           if (DOM.authGroupCallsign) DOM.authGroupCallsign.style.display = "flex";
           if (DOM.authTitle) DOM.authTitle.textContent = "PILOT REGISTRATION";
+          if (DOM.authDesc) DOM.authDesc.textContent = "Create your Pilot ID and get ₹10 Free Bonus credits instantly.";
           if (DOM.authSubmit) DOM.authSubmit.textContent = "REGISTER & GET ₹10 BONUS";
-        } else if (currentAuthMode === "admin") {
-          if (DOM.authGroupCallsign) DOM.authGroupCallsign.style.display = "none";
-          if (DOM.authTitle) DOM.authTitle.textContent = "ADMIN COMMAND PORTAL";
-          if (DOM.authSubmit) DOM.authSubmit.textContent = "ADMIN SECURE LOGIN";
         } else {
           if (DOM.authGroupCallsign) DOM.authGroupCallsign.style.display = "none";
           if (DOM.authTitle) DOM.authTitle.textContent = "PILOT SIGN IN";
+          if (DOM.authDesc) DOM.authDesc.textContent = "Sign in to access your Pilot cockpit, telemetry and wallet balance.";
           if (DOM.authSubmit) DOM.authSubmit.textContent = "SIGN IN & PROCEED";
         }
       });
@@ -1801,9 +1804,22 @@
       });
     }
 
+    // Support submitting by pressing Enter key on any auth input field
+    const authInputs = [DOM.authCallsignInput, DOM.authEmailInput, DOM.authPasswordInput];
+    authInputs.forEach(function (inp) {
+      if (inp) {
+        inp.addEventListener("keydown", function (e) {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleAuthSubmit();
+          }
+        });
+      }
+    });
+
     if (window.AERO_FIREBASE && window.AERO_FIREBASE.auth) {
       window.AERO_FIREBASE.auth.onAuthStateChanged(function (user) {
-        if (user) {
+        if (user && !savedState.isLoggedIn) {
           detectAndSyncBackend(user, "session_restore", "");
         }
       });
@@ -1811,43 +1827,92 @@
   }
 
   function handleAuthSubmit() {
-    const email = (DOM.authEmailInput ? DOM.authEmailInput.value : "").trim();
+    const rawEmail = (DOM.authEmailInput ? DOM.authEmailInput.value : "").trim();
     const password = (DOM.authPasswordInput ? DOM.authPasswordInput.value : "").trim();
-    const callsign = (DOM.authCallsignInput ? DOM.authCallsignInput.value : "").trim() || "MAVERICK";
+    const rawCallsign = (DOM.authCallsignInput ? DOM.authCallsignInput.value : "").trim();
 
-    if (!email || !password) {
-      showAuthStatus("Please enter both Email and Password.", "error");
+    if (!rawEmail || !password) {
+      showAuthStatus("Please enter your Email/Callsign and Password.", "error");
       return;
     }
 
-    showAuthStatus("Authenticating with Firebase...", "success");
+    if (password.length < 6) {
+      showAuthStatus("Password must be at least 6 characters.", "error");
+      return;
+    }
 
+    // If user enters just a username (e.g. 'ayan' or 'maverick'), normalize to email
+    let normalizedEmail = rawEmail;
+    if (!normalizedEmail.includes("@")) {
+      normalizedEmail = normalizedEmail.toLowerCase().replace(/[^a-z0-9._-]/g, "") + "@aerocrash.com";
+    }
+
+    const pilotCallsign = rawCallsign || rawEmail.split("@")[0].toUpperCase() || "MAVERICK";
+
+    if (DOM.authSubmit) {
+      DOM.authSubmit.disabled = true;
+      DOM.authSubmit.textContent = currentAuthMode === "register" ? "CREATING ID..." : "AUTHENTICATING...";
+    }
+    showAuthStatus("Connecting to flight deck cloud...", "success");
+
+    function resetSubmitBtn() {
+      if (DOM.authSubmit) {
+        DOM.authSubmit.disabled = false;
+        DOM.authSubmit.textContent = currentAuthMode === "register" ? "REGISTER & GET ₹10 BONUS" : "SIGN IN & PROCEED";
+      }
+    }
+
+    // Fallback if Firebase not configured
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.auth) {
       savedState.isLoggedIn = true;
-      savedState.userEmail = email;
-      savedState.callsign = callsign;
-      savedState.userRole = currentAuthMode === "admin" ? "admin" : "user";
+      savedState.userEmail = normalizedEmail;
+      savedState.callsign = pilotCallsign;
+      savedState.userRole = (window.AERO_FIREBASE && window.AERO_FIREBASE.isAdminEmail && window.AERO_FIREBASE.isAdminEmail(normalizedEmail)) ? "admin" : "user";
       saveState();
       completeLoginRouting(currentAuthMode);
+      resetSubmitBtn();
       return;
     }
 
     const auth = window.AERO_FIREBASE.auth;
+
     if (currentAuthMode === "register") {
-      auth.createUserWithEmailAndPassword(email, password)
+      auth.createUserWithEmailAndPassword(normalizedEmail, password)
         .then(function (cred) {
-          detectAndSyncBackend(cred.user, "register", callsign);
+          showAuthStatus("ID Created! Loading flight deck...", "success");
+          detectAndSyncBackend(cred.user, "register", pilotCallsign);
+          resetSubmitBtn();
         })
         .catch(function (err) {
-          showAuthStatus(err.message || "Registration failed.", "error");
+          resetSubmitBtn();
+          if (err.code === "auth/email-already-in-use") {
+            showAuthStatus("This Pilot ID is already registered. Please click PILOT LOGIN.", "error");
+          } else if (err.code === "auth/invalid-email") {
+            showAuthStatus("Invalid email address format.", "error");
+          } else if (err.code === "auth/weak-password") {
+            showAuthStatus("Password is too weak. Must be 6+ characters.", "error");
+          } else {
+            showAuthStatus(err.message || "Registration failed.", "error");
+          }
         });
     } else {
-      auth.signInWithEmailAndPassword(email, password)
+      auth.signInWithEmailAndPassword(normalizedEmail, password)
         .then(function (cred) {
-          detectAndSyncBackend(cred.user, currentAuthMode, callsign);
+          showAuthStatus("Authentication verified! Launching cockpit...", "success");
+          detectAndSyncBackend(cred.user, "login", pilotCallsign);
+          resetSubmitBtn();
         })
         .catch(function (err) {
-          showAuthStatus(err.message || "Authentication failed.", "error");
+          resetSubmitBtn();
+          if (err.code === "auth/user-not-found") {
+            showAuthStatus("No Pilot found with this ID. Click CREATE ID to register.", "error");
+          } else if (err.code === "auth/wrong-password" || err.code === "auth/invalid-credential") {
+            showAuthStatus("Incorrect password. Please verify credentials.", "error");
+          } else if (err.code === "auth/invalid-email") {
+            showAuthStatus("Invalid Pilot ID format.", "error");
+          } else {
+            showAuthStatus(err.message || "Authentication failed.", "error");
+          }
         });
     }
   }
