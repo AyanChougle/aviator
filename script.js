@@ -1454,7 +1454,7 @@
         life: 1.0,
         decay: 0.02 + Math.random() * 0.02,
         size: 2 + Math.random() * 3,
-        color: Math.random() < 0.6 ? "#ef4444" : "#ff7300",
+        color: Math.random() < 0.6 ? "#ffffff" : (Math.random() < 0.5 ? "#a1a1aa" : "#ef4444"),
       });
     }
   }
@@ -1464,7 +1464,7 @@
     const cy = canvasHeight * 0.55;
 
     ctx.save();
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 6]);
 
@@ -1483,7 +1483,7 @@
 
     const startY = canvasHeight - 28;
     ctx.setLineDash([]);
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
     ctx.beginPath();
     ctx.moveTo(20, startY);
     ctx.lineTo(canvasWidth - 20, startY);
@@ -1498,16 +1498,16 @@
     ctx.rotate(angle);
 
     if (gameState === "RUNNING") {
-      ctx.shadowColor = "#ff7300";
+      ctx.shadowColor = "#ffffff";
       ctx.shadowBlur = 14;
-      ctx.fillStyle = "rgba(255, 115, 0, 0.85)";
+      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
       ctx.beginPath();
       ctx.arc(-14, 0, 3.5 + Math.random() * 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.shadowBlur = 0;
     }
 
-    ctx.fillStyle = "#ff6b22";
+    ctx.fillStyle = "#e4e4e7";
     ctx.beginPath();
     ctx.moveTo(14, 0);
     ctx.lineTo(-4, -10);
@@ -1565,9 +1565,9 @@
       if (liveTrail.length > 1) {
         ctx.save();
         const fillGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-        fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.16)");
-        fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.03)");
-        fillGrad.addColorStop(1, "rgba(255, 107, 34, 0.0)");
+        fillGrad.addColorStop(0, "rgba(255, 255, 255, 0.14)");
+        fillGrad.addColorStop(0.7, "rgba(255, 255, 255, 0.02)");
+        fillGrad.addColorStop(1, "rgba(255, 255, 255, 0.0)");
 
         ctx.beginPath();
         ctx.moveTo(startX, startY);
@@ -1581,10 +1581,10 @@
         ctx.fill();
 
         ctx.beginPath();
-        ctx.strokeStyle = "#ff6b22";
+        ctx.strokeStyle = "#ffffff";
         ctx.lineWidth = 3.0;
-        ctx.shadowColor = "#ff7700";
-        ctx.shadowBlur = 10;
+        ctx.shadowColor = "#ffffff";
+        ctx.shadowBlur = 12;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
@@ -1607,7 +1607,7 @@
     } else if (gameState === "CRASHED" || gameState === "RESULT") {
       if (liveTrail.length > 1) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 107, 34, 0.4)";
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
