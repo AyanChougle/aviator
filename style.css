@@ -2404,20 +2404,20 @@ input:checked + .slider:before {
 }
 
 /* ===================================================================
-   07. GAME MASTER DRAWER (ADMIN)
+   07. GAME MASTER DRAWER (ADMIN COMMAND PORTAL)
    =================================================================== */
 .drawer {
   display: none;
   position: fixed;
   top: 0;
   right: 0;
-  width: 360px;
+  width: min(540px, 94vw);
   height: 100%;
-  background-color: var(--bg-surface-1);
-  border-left: 1px solid var(--border-mid);
+  background-color: #0c121e;
+  border-left: 1px solid rgba(255, 115, 0, 0.3);
   z-index: 200;
   flex-direction: column;
-  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.8);
+  box-shadow: -12px 0 35px rgba(0, 0, 0, 0.85);
 }
 
 .drawer.active {
@@ -2425,30 +2425,98 @@ input:checked + .slider:before {
 }
 
 .drawer-header {
-  height: 48px;
-  background-color: var(--bg-surface-2);
-  border-bottom: 1px solid var(--border-dim);
+  height: 52px;
+  background-color: #121927;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  padding: 0 18px;
   flex-shrink: 0;
+}
+
+.gm-drawer-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-crown-svg {
+  width: 18px;
+  height: 18px;
+  color: var(--accent-orange);
 }
 
 .drawer-header h2 {
   font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   text-transform: uppercase;
-  color: var(--status-warning);
+  color: #ff9533;
 }
 
 .drawer-close {
   background: none;
   border: none;
-  color: var(--text-dim);
-  font-size: 20px;
+  color: var(--text-muted);
+  font-size: 22px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.drawer-close:hover {
+  color: #ffffff;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+/* 3 Equal Tabs in Command Portal */
+.admin-drawer-tabs {
+  display: flex;
+  background-color: #0e1522;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 6px 12px;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.admin-tab-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background-color: #141d2d;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  padding: 8px 6px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-tab-btn .admin-tab-svg {
+  width: 13px;
+  height: 13px;
+}
+
+.admin-tab-btn:hover {
+  background-color: #1c273c;
+  color: #ffffff;
+}
+
+.admin-tab-btn.active {
+  background: rgba(255, 115, 0, 0.18);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+  box-shadow: 0 0 10px rgba(255, 115, 0, 0.2);
 }
 
 .drawer-content {
@@ -2456,31 +2524,266 @@ input:checked + .slider:before {
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
+  flex: 1;
 }
 
-.drawer-section {
+.admin-panel-view {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-panel-view.active {
+  display: flex;
+}
+
+/* CARDS INSIDE DRAWER */
+.drawer-section-card {
+  background-color: #121927;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
-.drawer-section h3 {
+.card-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding-bottom: 8px;
+}
+
+.card-section-header h3 {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.toggle-override-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent-orange);
+  cursor: pointer;
+}
+
+.toggle-override-label input[type="checkbox"] {
+  accent-color: var(--accent-orange);
+  cursor: pointer;
+}
+
+.override-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.override-input-group label {
   font-family: var(--font-ui);
   font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  font-weight: 700;
   color: var(--text-dim);
-  border-bottom: 1px solid var(--border-dim);
-  padding-bottom: 4px;
+  letter-spacing: 0.5px;
+}
+
+.target-input-row {
+  display: flex;
+  align-items: center;
+  background: #090e17;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  padding: 4px 10px;
+}
+
+.target-input-row:focus-within {
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 8px rgba(255, 115, 0, 0.25);
+}
+
+.target-input-row input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 800;
+  outline: none;
+}
+
+.input-suffix {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-orange);
+}
+
+/* PRESET CHIPS */
+.gm-preset-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.gm-preset-btn {
+  background-color: #162032;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 0;
+  text-align: center;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.gm-preset-btn:hover {
+  border-color: var(--accent-orange);
+  color: #ffffff;
+  background-color: rgba(255, 115, 0, 0.12);
+}
+
+.gm-preset-btn.selected {
+  border-color: var(--accent-orange);
+  background: var(--accent-orange);
+  color: #000000;
+  font-weight: 800;
+}
+
+.highlight-val {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--accent-orange);
+}
+
+.fleet-slider {
+  width: 100%;
+  accent-color: var(--accent-orange);
+  cursor: pointer;
+}
+
+.slider-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+.btn-sm-action {
+  padding: 4px 10px !important;
+  font-size: 10px !important;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}
+
+.admin-search-bar {
+  margin-bottom: 2px;
+}
+
+.admin-search-bar input {
+  width: 100%;
+  background: #090e17;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  color: #ffffff;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  outline: none;
+}
+
+.admin-search-bar input:focus {
+  border-color: var(--accent-orange);
+}
+
+.admin-table-container {
+  width: 100%;
+  overflow-x: auto;
+  max-height: 380px;
+  background: #090e17;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-sm);
+}
+
+.admin-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.admin-data-table th {
+  position: sticky;
+  top: 0;
+  background: #141d2d;
+  color: var(--text-muted);
+  padding: 8px 10px;
+  text-align: left;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  white-space: nowrap;
+  z-index: 2;
+}
+
+.admin-data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  white-space: nowrap;
+}
+
+.admin-data-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+.btn-admin-action-sm {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 3px;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-admin-approve {
+  background: var(--status-success);
+  color: #000000;
+}
+
+.btn-admin-approve:hover {
+  background: #22c55e;
+}
+
+.btn-admin-reject {
+  background: var(--status-danger);
+  color: #ffffff;
+  margin-left: 4px;
+}
+
+.btn-admin-reject:hover {
+  background: #dc2626;
 }
 
 .drawer-grid-2,
 .live-metrics-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 6px;
+  gap: 8px;
 }
 
 /* ===================================================================

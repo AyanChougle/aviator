@@ -300,7 +300,7 @@
           <div class="add-bet-action-wrapper">
             <button type="button" id="btn-add-bet-panel" class="btn-add-bet-panel" title="Add another simultaneous bet slot">
               <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-              <span>+ ADD SIMULTANEOUS BET (UP TO 4)</span>
+              <span>+ ADD SIMULTANEOUS BET</span>
             </button>
           </div>
 
@@ -755,7 +755,7 @@
     <header class="drawer-header">
       <div class="gm-drawer-title-wrap">
         <svg class="gm-crown-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z"/></svg>
-        <h2 id="gm-drawer-heading">GAME MASTER // COMMAND PORTAL</h2>
+        <h2 id="gm-drawer-heading">COMMAND PORTAL // GAME MASTER</h2>
       </div>
       <button type="button" id="btn-gm-close" class="drawer-close" aria-label="Close Game Master">×</button>
     </header>
@@ -764,11 +764,11 @@
     <div class="admin-drawer-tabs">
       <button type="button" class="admin-tab-btn active" id="tab-admin-flight" data-tab="flight">
         <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
-        <span>CONTROLS</span>
+        <span>FLIGHT CONTROL</span>
       </button>
       <button type="button" class="admin-tab-btn" id="tab-admin-users" data-tab="users">
         <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-        <span>USERS &amp; IP</span>
+        <span>PILOTS &amp; IPS</span>
       </button>
       <button type="button" class="admin-tab-btn" id="tab-admin-withdrawals" data-tab="withdrawals">
         <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
@@ -779,33 +779,67 @@
     <div class="drawer-content">
       <!-- 1. FLIGHT CONTROLS -->
       <div id="admin-panel-flight" class="admin-panel-view active">
-        <div class="drawer-section">
-          <h3>ROUND OVERRIDE</h3>
-          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
-            <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL TARGET
-          </label>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-            <label for="gm-target-input" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">TARGET MULTIPLIER:</label>
-            <input type="number" id="gm-target-input" value="2.50" step="0.1" min="1.01" max="30.0"
-              style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:6px 10px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
+        <!-- ROUND OVERRIDE CARD -->
+        <div class="drawer-section-card">
+          <div class="card-section-header">
+            <h3>MULTIPLIER &amp; ROUND OVERRIDE</h3>
+            <label class="toggle-override-label">
+              <input type="checkbox" id="gm-override-enabled" checked>
+              <span>MANUAL TARGET ACTIVE</span>
+            </label>
           </div>
-          <div class="drawer-grid-2" style="margin-top:12px;">
-            <button type="button" id="gm-btn-force-crash" class="btn-danger">FORCE CRASH NOW</button>
-            <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">PAUSE SIMULATION</button>
+
+          <div class="override-input-group">
+            <label for="gm-target-input">TARGET MULTIPLIER</label>
+            <div class="target-input-row">
+              <input type="number" id="gm-target-input" value="15.00" step="0.5" min="1.05">
+              <span class="input-suffix">x</span>
+            </div>
+          </div>
+
+          <!-- QUICK MULTIPLIER PRESETS -->
+          <div class="gm-preset-grid">
+            <button type="button" class="gm-preset-btn" data-multi="2.00">2.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="3.00">3.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="5.00">5.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="10.00">10.00x</button>
+            <button type="button" class="gm-preset-btn selected" data-multi="15.00">15.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="25.00">25.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="50.00">50.00x</button>
+            <button type="button" class="gm-preset-btn" data-multi="100.00">100.00x</button>
+          </div>
+
+          <div class="drawer-grid-2" style="margin-top: 10px;">
+            <button type="button" id="gm-btn-force-crash" class="btn-danger">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
+              <span>FORCE CRASH NOW</span>
+            </button>
+            <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+              <span>PAUSE SIMULATION</span>
+            </button>
           </div>
         </div>
 
-        <div class="drawer-section">
-          <h3>FLEET SIMULATION</h3>
-          <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:6px;">
-            <span style="color:var(--text-dim);">PILOT FLEET SIZE:</span>
-            <span id="gm-fleet-value" style="color:var(--accent-amber);font-weight:700;">150</span>
+        <!-- FLEET SIMULATION CARD -->
+        <div class="drawer-section-card">
+          <div class="card-section-header">
+            <h3>FLEET SIMULATION</h3>
+            <span id="gm-fleet-value" class="highlight-val">300 PILOTS</span>
           </div>
-          <input type="range" id="gm-fleet-count" min="10" max="300" value="150" style="width:100%;accent-color:var(--accent-amber);">
+          <input type="range" id="gm-fleet-count" min="10" max="500" value="300" class="fleet-slider">
+          <div class="slider-legend">
+            <span>10 Minimal</span>
+            <span>250 Standard</span>
+            <span>500 Max Squadron</span>
+          </div>
         </div>
 
-        <div class="drawer-section">
-          <h3>LIVE ENGINE TELEMETRY</h3>
+        <!-- LIVE ENGINE TELEMETRY CARD -->
+        <div class="drawer-section-card">
+          <div class="card-section-header">
+            <h3>LIVE ENGINE TELEMETRY</h3>
+          </div>
           <div class="live-metrics-grid">
             <div class="dossier-item">
               <span class="label">LIVE MULT:</span>
@@ -813,7 +847,7 @@
             </div>
             <div class="dossier-item">
               <span class="label">TARGET MULT:</span>
-              <span id="debug-target-multi" class="value" style="color:var(--status-warning); font-weight:800;">2.50x</span>
+              <span id="debug-target-multi" class="value" style="color:var(--status-warning); font-weight:800;">15.00x</span>
             </div>
           </div>
         </div>
@@ -821,11 +855,18 @@
 
       <!-- 2. FIRESTORE USERS & IP DIRECTORY -->
       <div id="admin-panel-users" class="admin-panel-view">
-        <div class="drawer-section">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>REGISTERED PILOTS & IPS</h3>
-            <button type="button" id="btn-refresh-admin-users" class="btn-secondary" style="padding:2px 8px; font-size:10px;">REFRESH</button>
+        <div class="drawer-section-card">
+          <div class="card-section-header">
+            <h3>REGISTERED PILOTS &amp; IP DIRECTORY</h3>
+            <button type="button" id="btn-refresh-admin-users" class="btn-secondary btn-sm-action">
+              <span>↻ REFRESH</span>
+            </button>
           </div>
+
+          <div class="admin-search-bar">
+            <input type="text" id="admin-user-search-input" placeholder="Search pilot name, email, IP..." autocomplete="off">
+          </div>
+
           <div class="admin-table-container">
             <table class="admin-data-table" id="admin-users-table">
               <thead>
@@ -833,11 +874,11 @@
                   <th>PILOT</th>
                   <th>EMAIL</th>
                   <th>IP ADDRESS</th>
-                  <th>BALANCE</th>
+                  <th>WALLET BALANCE</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Loading users from Firestore...</td></tr>
+                <tr><td colspan="4" style="text-align:center; color:var(--text-dim); padding: 24px;">Loading registered pilots from Firestore...</td></tr>
               </tbody>
             </table>
           </div>
@@ -846,10 +887,12 @@
 
       <!-- 3. REAL MONEY WITHDRAWALS REQUESTS -->
       <div id="admin-panel-withdrawals" class="admin-panel-view">
-        <div class="drawer-section">
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>PENDING WITHDRAWALS</h3>
-            <button type="button" id="btn-refresh-admin-withdrawals" class="btn-secondary" style="padding:2px 8px; font-size:10px;">REFRESH</button>
+        <div class="drawer-section-card">
+          <div class="card-section-header">
+            <h3>PENDING WITHDRAWALS QUEUE</h3>
+            <button type="button" id="btn-refresh-admin-withdrawals" class="btn-secondary btn-sm-action">
+              <span>↻ REFRESH</span>
+            </button>
           </div>
           <div class="admin-table-container">
             <table class="admin-data-table" id="admin-withdrawals-table">
@@ -858,11 +901,11 @@
                   <th>PILOT</th>
                   <th>AMOUNT</th>
                   <th>METHOD</th>
-                  <th>ACTION</th>
+                  <th>ACTIONS</th>
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Loading withdrawal requests...</td></tr>
+                <tr><td colspan="4" style="text-align:center; color:var(--text-dim); padding: 24px;">Loading withdrawal requests...</td></tr>
               </tbody>
             </table>
           </div>
@@ -884,8 +927,8 @@
       <div class="modal-body">
         <div class="onboarding-steps">
           <div class="onboarding-step">
-            <h4>01 // PLACE YOUR STAKE (₹10 - ₹8,000)</h4>
-            <p>Set your stake during the 8-second countdown window. Minimum bet is ₹10 and maximum is ₹8,000.</p>
+            <h4>01 // PLACE YOUR STAKE (NO LIMIT)</h4>
+            <p>Set your stake during the 8-second countdown window. There are no maximum stake limits.</p>
           </div>
           <div class="onboarding-step">
             <h4>02 // UNPREDICTABLE MULTIPLIER FLIGHT</h4>

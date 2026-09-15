@@ -13,10 +13,10 @@
   const CONFIG = {
     STORAGE_KEY: "aero_crash_rupees_v2",
     INITIAL_BALANCE: 10.00, // ₹10 Free Starting Credit
-    MIN_STAKE: 10,          // ₹10 minimum
-    MAX_STAKE: 8000,        // ₹8,000 maximum
+    MIN_STAKE: 1,           // ₹1 minimum (no restrictive minimum)
+    MAX_STAKE: 100000,      // ₹1,00,000 maximum stake limit (One Lakh Rupee Cap)
     MIN_WITHDRAWAL: 50,     // ₹50 minimum withdrawal
-    MAX_SIMULTANEOUS_BETS: 4,
+    MAX_SIMULTANEOUS_BETS: Infinity, // No limit on simultaneous bets
     TIMINGS: {
       SPLASH_MS: 1400,
       BETTING_MS: 8000,
@@ -767,7 +767,7 @@
           <label for="input-stake-${slotId}">STAKE AMOUNT (₹)</label>
           <div class="stake-stepper-card">
             <span class="currency-symbol">₹</span>
-            <input type="number" id="input-stake-${slotId}" value="${b.stake.toFixed(2)}" min="10" max="8000" step="10">
+            <input type="number" id="input-stake-${slotId}" value="${b.stake.toFixed(2)}" min="1" step="any">
             <div class="stepper-arrows">
               <button type="button" class="btn-arrow-step btn-step-inc" data-slot="${slotId}">▲</button>
               <button type="button" class="btn-arrow-step btn-step-dec" data-slot="${slotId}">▼</button>
@@ -844,7 +844,8 @@
 
       if (stakeInput) {
         stakeInput.addEventListener("input", function () {
-          b.stake = Math.max(CONFIG.MIN_STAKE, Math.min(CONFIG.MAX_STAKE, parseFloat(stakeInput.value) || 10));
+          const parsed = parseFloat(stakeInput.value);
+          b.stake = (!isNaN(parsed) && parsed > 0) ? parsed : 0;
           const summary = document.getElementById("slot-summary-" + slotId);
           if (summary) summary.textContent = formatRupees(b.stake);
           updateActionButtons();
@@ -905,7 +906,7 @@
       btn.addEventListener("click", function () {
         const slotId = parseInt(btn.getAttribute("data-slot"), 10);
         if (bets[slotId]) {
-          bets[slotId].stake = Math.min(CONFIG.MAX_STAKE, bets[slotId].stake + 10);
+          bets[slotId].stake = Math.min(CONFIG.MAX_STAKE, (bets[slotId].stake || 0) + 10);
           const inp = document.getElementById("input-stake-" + slotId);
           if (inp) inp.value = bets[slotId].stake.toFixed(2);
           const summary = document.getElementById("slot-summary-" + slotId);
@@ -919,7 +920,7 @@
       btn.addEventListener("click", function () {
         const slotId = parseInt(btn.getAttribute("data-slot"), 10);
         if (bets[slotId]) {
-          bets[slotId].stake = Math.max(CONFIG.MIN_STAKE, bets[slotId].stake - 10);
+          bets[slotId].stake = Math.max(1, (bets[slotId].stake || 10) - 10);
           const inp = document.getElementById("input-stake-" + slotId);
           if (inp) inp.value = bets[slotId].stake.toFixed(2);
           const summary = document.getElementById("slot-summary-" + slotId);
@@ -1031,6 +1032,16 @@
   function placeBet(slotId) {
     const b = bets[slotId];
     if (!b) return;
+
+    if (b.stake < CONFIG.MIN_STAKE) {
+      showActionFeedback("MINIMUM STAKE IS " + formatRupees(CONFIG.MIN_STAKE), "danger");
+      return;
+    }
+
+    if (b.stake > CONFIG.MAX_STAKE) {
+      showActionFeedback("MAXIMUM STAKE LIMIT IS " + formatRupees(CONFIG.MAX_STAKE), "danger");
+      return;
+    }
 
     if (savedState.virtualBalance < b.stake) {
       showActionFeedback("INSUFFICIENT BALANCE // ADD FUNDS", "danger");
@@ -2127,13 +2138,9 @@
   function setupEventListeners() {
     if (DOM.btnAddBetPanel) {
       DOM.btnAddBetPanel.addEventListener("click", function () {
-        if (activeSlotIds.length < CONFIG.MAX_SIMULTANEOUS_BETS) {
-          const nextId = Math.max.apply(null, activeSlotIds) + 1;
-          activeSlotIds.push(nextId);
-          renderDynamicBetPanels();
-        } else {
-          showActionFeedback("MAXIMUM 4 SIMULTANEOUS BETS REACHED", "info");
-        }
+        const nextId = (activeSlotIds.length > 0 ? Math.max.apply(null, activeSlotIds) : 0) + 1;
+        activeSlotIds.push(nextId);
+        renderDynamicBetPanels();
       });
     }
 
