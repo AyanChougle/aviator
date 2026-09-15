@@ -164,6 +164,7 @@
   let liveMultiplier = 1.00;
   let crashMultiplier = 2.50;
   let roundStartTime = 0;
+  let launchingStartTime = 0;
   let launchStartTime = 0;
   let currentScreen = "SPLASH";
   let isGamePaused = false;
@@ -508,8 +509,13 @@
   }
 
   function calculateMultiplier(elapsedSec) {
-    const exponent = 0.048 * Math.pow(elapsedSec, 1.10);
-    const multi = Math.max(1.00, Math.exp(exponent));
+    if (typeof elapsedSec !== "number" || isNaN(elapsedSec) || elapsedSec <= 0) {
+      return 1.00;
+    }
+    const safeSec = Math.max(0, elapsedSec);
+    const exponent = 0.048 * Math.pow(safeSec, 1.10);
+    const multi = Math.exp(exponent);
+    if (isNaN(multi) || multi < 1.00) return 1.00;
     return Math.min(MAX_POSSIBLE_MULTIPLIER, multi);
   }
 
@@ -633,13 +639,19 @@
 
       if (data.state && data.state !== gameState) {
         if (data.state === "RUNNING") {
-          launchStartTime = performance.now() - Math.max(0, serverNow - (data.launchStartTime || serverNow));
+          const serverElapsed = (data.launchStartTime && serverNow >= data.launchStartTime)
+            ? Math.min(15000, serverNow - data.launchStartTime)
+            : 0;
+          launchStartTime = performance.now() - serverElapsed;
           transitionTo("RUNNING", true);
         } else if (data.state === "CRASHED") {
           liveMultiplier = data.crashMultiplier || crashMultiplier;
           transitionTo("CRASHED", true);
         } else if (data.state === "BETTING") {
-          roundStartTime = performance.now() - Math.max(0, serverNow - (data.bettingStartTime || serverNow));
+          const serverElapsed = (data.bettingStartTime && serverNow >= data.bettingStartTime)
+            ? Math.min(CONFIG.TIMINGS.BETTING_MS, serverNow - data.bettingStartTime)
+            : 0;
+          roundStartTime = performance.now() - serverElapsed;
           transitionTo("BETTING", true);
         } else if (data.state === "LAUNCHING") {
           transitionTo("LAUNCHING", true);
@@ -884,6 +896,7 @@
   //====================================================================
   function transitionTo(newState, fromRemote) {
     gameState = newState;
+    const now = performance.now();
 
     if (DOM.statePill) DOM.statePill.textContent = newState;
     if (DOM.stateDot) {
@@ -909,7 +922,7 @@
 
         liveMultiplier = 1.00;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-        if (!fromRemote) roundStartTime = performance.now();
+        roundStartTime = now;
         liveTrail = [];
 
         subscribeToActiveBets(roundNumber);
@@ -927,6 +940,7 @@
         break;
 
       case "LAUNCHING":
+        launchingStartTime = now;
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
@@ -938,7 +952,7 @@
         break;
 
       case "RUNNING":
-        if (!fromRemote) launchStartTime = performance.now();
+        launchStartTime = now;
         liveTrail = [];
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
@@ -1221,20 +1235,31 @@
       return;
     }
 
+    const now = performance.now();
+
     if (gameState === "BETTING") {
-      const elapsed = timestamp - roundStartTime;
+      if (!roundStartTime || isNaN(roundStartTime)) roundStartTime = now;
+      const elapsed = Math.max(0, now - roundStartTime);
       const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
       const secondsLeft = Math.ceil(remaining / 1000);
 
       if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
       if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
 
-      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) transitionTo("LAUNCHING");
+      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
+        transitionTo("LAUNCHING");
+      }
     } else if (gameState === "LAUNCHING") {
-      const elapsed = timestamp - (roundStartTime + CONFIG.TIMINGS.BETTING_MS);
-      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) transitionTo("RUNNING");
+      if (!launchingStartTime || isNaN(launchingStartTime)) launchingStartTime = now;
+      const elapsed = Math.max(0, now - launchingStartTime);
+      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
+        transitionTo("RUNNING");
+      }
     } else if (gameState === "RUNNING") {
-      const elapsedSec = (timestamp - launchStartTime) / 1000;
+      if (!launchStartTime || isNaN(launchStartTime) || launchStartTime > now) {
+        launchStartTime = now;
+      }
+      const elapsedSec = Math.max(0, (now - launchStartTime) / 1000);
       liveMultiplier = calculateMultiplier(elapsedSec);
 
       if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
