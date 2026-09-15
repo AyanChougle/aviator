@@ -2468,8 +2468,50 @@
       }, function () {});
   }
 
+
+  // Immediate Cloud Firestore Synchronizer for Active Profile
+  function syncUserProfileToFirestore() {
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    const db = window.AERO_FIREBASE.db;
+    const auth = window.AERO_FIREBASE.auth;
+    
+    let uid = (auth && auth.currentUser) ? auth.currentUser.uid : null;
+    if (!uid) {
+      if (savedState.userEmail) {
+        uid = savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_");
+      } else {
+        uid = "pilot_" + (savedState.callsign || "guest").toLowerCase();
+      }
+    }
+
+    const email = savedState.userEmail || (savedState.callsign ? savedState.callsign.toLowerCase() + "@aerocrash.com" : "pilot@aerocrash.com");
+    const isAdmin = (window.AERO_FIREBASE.isAdminEmail && window.AERO_FIREBASE.isAdminEmail(email));
+    const role = isAdmin ? "admin" : (savedState.userRole || "user");
+    savedState.userRole = role;
+
+    db.collection("users").doc(uid).set({
+      uid: uid,
+      email: email,
+      callsign: savedState.callsign || "PILOT",
+      role: role,
+      balance: typeof savedState.virtualBalance === "number" ? savedState.virtualBalance : CONFIG.INITIAL_BALANCE,
+      bankDetails: savedState.bankDetails || {},
+      upiDetails: savedState.upiDetails || {},
+      lastIP: clientIP,
+      lastActiveAt: new Date(),
+      career: savedState.career || {}
+    }, { merge: true }).then(function () {
+      console.log("[AeroCrash Firestore] Successfully stored/updated user in Firestore:", uid);
+    }).catch(function (err) {
+      console.warn("[AeroCrash Firestore] Notice: Could not sync user doc (check Rules tab in Firebase Console):", err.message);
+    });
+
+    listenToUserDoc(uid);
+  }
+
   function completeLoginRouting(authMode) {
     updatePlayerUIBalance();
+    syncUserProfileToFirestore();
     if (savedState.userRole === "admin") {
       if (DOM.btnGmToggle) DOM.btnGmToggle.style.display = "flex";
       switchScreen("GAME");
@@ -2512,6 +2554,7 @@
         } else {
           switchScreen("AUTH");
         }
+        syncUserProfileToFirestore();
         if (!hasReceivedFirstSnapshot || !sharedRound.state) {
           applyStateTransition("BETTING", false);
         } else {
