@@ -543,8 +543,8 @@
         roundStartTime = performance.now();
         liveTrail = [];
 
-        squadronPilots = generateSquadron(fleetCount);
-        renderSquadronTable(true);
+        subscribeToActiveBets(roundNumber);
+        publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
 
         if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
@@ -560,6 +560,7 @@
         if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         soundLaunch();
+        publishGlobalRoundState("LAUNCHING", roundNumber, crashMultiplier, Date.now());
         updateActionButton();
         break;
 
@@ -570,12 +571,14 @@
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
         if (DOM.statePill) DOM.statePill.textContent = "IN PROGRESS";
+        publishGlobalRoundState("RUNNING", roundNumber, crashMultiplier, Date.now());
         updateActionButton();
         break;
 
       case "CRASHED":
         soundCrash();
-        renderSquadronTable(false);
+        publishGlobalRoundState("CRASHED", roundNumber, liveMultiplier, Date.now());
+        renderSquadronTable();
         addTickerBadge(liveMultiplier);
         addFeedItem("FLIGHT CRASHED @ " + liveMultiplier.toFixed(2) + "x", "crashed");
 
@@ -691,6 +694,24 @@
     updatePlayerUIBalance();
     updateActionButton();
     addFeedItem(savedState.callsign + " staked " + formatRupees(stake));
+
+    // Sync real bet to Firestore active_bets collection
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).set({
+        round: roundNumber,
+        email: savedState.userEmail || "pilot@aerocrash.com",
+        callsign: savedState.callsign || "PILOT",
+        stake: currentStake,
+        targetMulti: 0,
+        cashoutValue: 0,
+        profit: 0,
+        hasCashedOut: false,
+        status: "ACTIVE",
+        placedAt: new Date()
+      }).catch(function () {});
+    }
   }
 
   function cancelBet() {
@@ -702,6 +723,12 @@
     updatePlayerUIBalance();
     updateActionButton();
     addFeedItem(savedState.callsign + " cancelled stake");
+
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).delete().catch(function () {});
+    }
   }
 
   function cashOut() {
@@ -737,6 +764,19 @@
     renderPersonalHistoryLogs();
     soundCashout();
 
+    // Sync cashout to Firestore active_bets
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).update({
+        hasCashedOut: true,
+        targetMulti: cashoutMultiplier,
+        cashoutValue: cashoutAmount,
+        profit: profit,
+        status: "CASHED_OUT"
+      }).catch(function () {});
+    }
+
     if (DOM.playerResultBanner) {
       DOM.playerResultBanner.textContent = "CASHED OUT " + formatRupees(cashoutAmount) + " (" + cashoutMultiplier.toFixed(2) + "x)";
       DOM.playerResultBanner.classList.add("active");
@@ -764,73 +804,76 @@
   });
 
   //====================================================================
-  // SQUADRON MULTIPLAYER SIMULATOR
+  // REAL-TIME MULTIPLAYER SYNCHRONIZED SQUADRON BETS
+  // (ONLY REAL LOGGED-IN USERS ARE VISIBLE)
   //====================================================================
-  function generateSquadron(count) {
-    const pilots = [];
-    for (let i = 0; i < count; i++) {
-      const profileRand = Math.random();
-      let targetMulti = 1.8;
-      if (profileRand < 0.25) targetMulti = 1.1 + Math.random() * 0.4;
-      else if (profileRand < 0.70) targetMulti = 1.5 + Math.random() * 1.5;
-      else if (profileRand < 0.92) targetMulti = 3.0 + Math.random() * 3.5;
-      else targetMulti = 7.0 + Math.random() * 25.0;
+  let realSquadronBets = [];
+  let activeBetsUnsubscribe = null;
 
-      const name = NOUN_CALLSIGNS[i % NOUN_CALLSIGNS.length] + (i > 12 ? Math.floor(10 + Math.random() * 89) : "");
-      const stakeChoices = [10, 25, 50, 100, 200, 500, 1000, 2000, 5000];
-      const stake = stakeChoices[Math.floor(Math.random() * stakeChoices.length)];
-
-      pilots.push({
-        id: "#" + (8400 + i),
-        name: name,
-        stake: stake,
-        targetMulti: Math.round(targetMulti * 100) / 100,
-        hasCashedOut: false,
-        cashoutValue: 0,
-        profit: 0
-      });
+  function subscribeToActiveBets(roundNum) {
+    if (activeBetsUnsubscribe) {
+      activeBetsUnsubscribe();
+      activeBetsUnsubscribe = null;
     }
-    return pilots;
+    realSquadronBets = [];
+
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) {
+      renderSquadronTable();
+      return;
+    }
+
+    try {
+      activeBetsUnsubscribe = window.AERO_FIREBASE.db.collection("active_bets")
+        .where("round", "==", roundNum)
+        .onSnapshot(function (snapshot) {
+          const bets = [];
+          snapshot.forEach(function (doc) {
+            bets.push(doc.data());
+          });
+          realSquadronBets = bets;
+          renderSquadronTable();
+        }, function () {
+          renderSquadronTable();
+        });
+    } catch (e) {
+      renderSquadronTable();
+    }
   }
 
-  function updateSquadronDuringFlight(multiplier) {
-    squadronPilots.forEach(function (p) {
-      if (!p.hasCashedOut && multiplier >= p.targetMulti) {
-        p.hasCashedOut = true;
-        p.cashoutValue = Math.floor(p.stake * p.targetMulti * 100) / 100;
-        p.profit = p.cashoutValue - p.stake;
-        if (Math.random() < 0.12) {
-          addFeedItem(p.name + " cashed @" + p.targetMulti.toFixed(2) + "x (+" + formatRupees(p.profit) + ")", "cashout");
-        }
-      }
-    });
-  }
-
-  function renderSquadronTable(firstLoad) {
+  function renderSquadronTable() {
     if (!DOM.squadronBetsTable) return;
     const tbody = DOM.squadronBetsTable.querySelector("tbody");
     if (!tbody) return;
 
-    const displayList = squadronPilots.slice(0, 15);
-    let html = "";
-    displayList.forEach(function (pilot) {
-      const isCashed = pilot.hasCashedOut;
-      const isCrash = gameState === "CRASHED";
-      const statusClass = isCashed ? "cashed-out" : isCrash ? "crashed" : "placed-true";
-      const cashoutText = isCashed ? formatRupees(pilot.cashoutValue) : isCrash ? "—" : "—";
-      const multiText = isCashed ? pilot.targetMulti.toFixed(2) + "x" : isCrash ? "1.00x" : "—";
-      let profitHtml = '<span style="color:var(--text-dim);">—</span>';
+    if (realSquadronBets.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 22px; color: var(--text-dim); font-size:11px; font-family:var(--font-mono); letter-spacing:0.5px;">NO SQUADRON STAKES PLACED YET // PLACE YOUR STAKE</td></tr>';
+      if (DOM.squadronCountBadge) DOM.squadronCountBadge.textContent = "● 0 BETS";
+      return;
+    }
 
+    let html = "";
+    realSquadronBets.forEach(function (bet, index) {
+      const isCashed = bet.hasCashedOut;
+      const isCrash = gameState === "CRASHED" && !isCashed;
+      const statusClass = isCashed ? "cashed-out" : isCrash ? "crashed" : "placed-true";
+      const cashoutText = isCashed ? formatRupees(bet.cashoutValue || (bet.stake * (bet.targetMulti || 1))) : "—";
+      const multiText = isCashed ? (bet.targetMulti ? bet.targetMulti.toFixed(2) + "x" : "—") : isCrash ? "1.00x" : "—";
+      
+      let profitHtml = '<span style="color:var(--text-dim);">—</span>';
       if (isCashed) {
-        profitHtml = '<span class="profit-pos">+' + formatRupees(pilot.profit) + '</span>';
+        const profit = (bet.cashoutValue || (bet.stake * (bet.targetMulti || 1))) - bet.stake;
+        profitHtml = '<span class="profit-pos">+' + formatRupees(profit) + '</span>';
       } else if (isCrash) {
-        profitHtml = '<span class="profit-neg">-' + formatRupees(pilot.stake) + '</span>';
+        profitHtml = '<span class="profit-neg">-' + formatRupees(bet.stake) + '</span>';
       }
 
+      const pilotId = "#" + (8400 + (index % 100));
+      const displayName = bet.callsign || (bet.email ? bet.email.split("@")[0].toUpperCase() : "PILOT");
+
       html += '<tr class="' + statusClass + '">' +
-        '<td>' + pilot.id + '</td>' +
-        '<td>' + pilot.name + '</td>' +
-        '<td>' + formatRupees(pilot.stake) + '</td>' +
+        '<td>' + pilotId + '</td>' +
+        '<td style="font-weight:700; color:' + (displayName === savedState.callsign ? 'var(--accent-orange)' : 'var(--text-main)') + ';">' + displayName + '</td>' +
+        '<td>' + formatRupees(bet.stake) + '</td>' +
         '<td>' + cashoutText + '</td>' +
         '<td>' + multiText + '</td>' +
         '<td>' + profitHtml + '</td>' +
@@ -838,7 +881,79 @@
     });
 
     tbody.innerHTML = html;
-    if (DOM.squadronCountBadge) DOM.squadronCountBadge.textContent = "● " + squadronPilots.length + " BETS";
+    if (DOM.squadronCountBadge) {
+      DOM.squadronCountBadge.textContent = "● " + realSquadronBets.length + (realSquadronBets.length === 1 ? " BET" : " BETS");
+    }
+  }
+
+
+  //====================================================================
+  // GLOBAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE
+  // (ALL PLAYERS WORLDWIDE SHARE THE SAME ROUND, MULTIPLIER, & TIMING)
+  //====================================================================
+  let isGlobalSyncActive = false;
+  let globalRoundUnsubscribe = null;
+
+  function initGlobalMultiplayerSync() {
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    if (isGlobalSyncActive) return;
+    isGlobalSyncActive = true;
+
+    const roundDocRef = window.AERO_FIREBASE.db.collection("game_state").doc("current_round");
+
+    globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
+      if (!doc.exists) {
+        // Initialize global round if document does not exist yet
+        publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
+        return;
+      }
+
+      const data = doc.data();
+      const serverNow = Date.now();
+
+      // If remote round number is newer, sync to it
+      if (data.roundNumber && data.roundNumber !== roundNumber) {
+        roundNumber = data.roundNumber;
+        crashMultiplier = data.crashMultiplier || generateCrashPoint();
+        if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        subscribeToActiveBets(roundNumber);
+      }
+
+      // If admin modified crashMultiplier in Firestore
+      if (data.crashMultiplier && Math.abs(data.crashMultiplier - crashMultiplier) > 0.01) {
+        crashMultiplier = data.crashMultiplier;
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+      }
+
+      // Synchronize states
+      if (data.state && data.state !== gameState) {
+        if (data.state === "RUNNING") {
+          launchStartTime = performance.now() - Math.max(0, serverNow - (data.launchStartTime || serverNow));
+          transitionTo("RUNNING", true);
+        } else if (data.state === "CRASHED") {
+          liveMultiplier = data.crashMultiplier || crashMultiplier;
+          transitionTo("CRASHED", true);
+        } else if (data.state === "BETTING") {
+          roundStartTime = performance.now() - Math.max(0, serverNow - (data.bettingStartTime || serverNow));
+          transitionTo("BETTING", true);
+        } else if (data.state === "LAUNCHING") {
+          transitionTo("LAUNCHING", true);
+        }
+      }
+    }, function () {});
+  }
+
+  function publishGlobalRoundState(state, rNum, cMulti, sTime) {
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    window.AERO_FIREBASE.db.collection("game_state").doc("current_round").set({
+      roundNumber: rNum,
+      state: state,
+      crashMultiplier: cMulti,
+      bettingStartTime: state === "BETTING" ? Date.now() : 0,
+      launchStartTime: state === "RUNNING" ? Date.now() : 0,
+      updatedAt: Date.now()
+    }, { merge: true }).catch(function () {});
   }
 
   //====================================================================
@@ -2029,6 +2144,7 @@
     setupWalletController();
     setupAuthFlow();
     setupAdminPortal();
+    initGlobalMultiplayerSync();
     resizeCanvas();
 
     let splashProgress = 0;
