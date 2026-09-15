@@ -433,9 +433,9 @@
   setInterval(updateLiveClock, 1000);
 
   //====================================================================
-  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE (REALISTIC CEILING 30.00x)
+  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE (REALISTIC CEILING UP TO 1000.00x FOR MANUAL OVERRIDES)
   //====================================================================
-  const MAX_POSSIBLE_MULTIPLIER = 30.00;
+  const MAX_POSSIBLE_MULTIPLIER = 1000.00;
 
   // High-performance deterministic pseudo-random generator (Mulberry32)
   function seededRandom(seed) {
@@ -465,7 +465,7 @@
     } else {
       point = 12.01 + ((r - 0.94) / 0.06) * 15.99; // 12.01x - 28.00x
     }
-    return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(point * 100) / 100);
+    return Math.min(30.00, Math.floor(point * 100) / 100);
   }
 
   function calculateMultiplier(elapsedSec) {
@@ -641,6 +641,7 @@
 
   function isLocalMaster() {
     if (savedState.userRole === "admin") return true;
+    if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) return true;
     if (sharedRound.masterId === localSessionId) return true;
     const timeSinceUpdate = Date.now() - (sharedRound.updatedAt || 0);
     if (timeSinceUpdate > 6000) return true;
@@ -695,6 +696,13 @@
       if (typeof sharedRound.crashMultiplier === "number") {
         crashMultiplier = sharedRound.crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+      }
+
+      if (typeof sharedRound.isPaused === "boolean" && sharedRound.isPaused !== isGamePaused) {
+        isGamePaused = sharedRound.isPaused;
+        if (DOM.gmBtnPauseToggle) {
+          DOM.gmBtnPauseToggle.textContent = isGamePaused ? "RESUME SIMULATION" : "PAUSE SIMULATION";
+        }
       }
 
       if (sharedRound.state && sharedRound.state !== gameState) {
@@ -1392,7 +1400,12 @@
       if (elapsed >= CONFIG.TIMINGS.RESULT_MS && isMaster) {
         const nextRound = (sharedRound.roundNumber || roundNumber) + 1;
         sharedRound.roundNumber = nextRound;
-        sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
+          sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+        } else {
+          sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+        }
         crashMultiplier = sharedRound.crashMultiplier;
         sharedRound.state = "BETTING";
         sharedRound.bettingStartTime = nowEpoch;
@@ -2251,15 +2264,46 @@
         if (DOM.drawerGM) DOM.drawerGM.classList.remove("active");
       });
     }
+    // Game Master preset chips (2.00x, 3.00x, 5.00x, 10.00x, 15.00x, 25.00x, 50.00x, 100.00x)
+    const gmPresetBtns = document.querySelectorAll(".gm-preset-btn");
+    gmPresetBtns.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const multiVal = parseFloat(btn.getAttribute("data-multi"));
+        if (isNaN(multiVal)) return;
+
+        if (DOM.gmTargetInput) DOM.gmTargetInput.value = multiVal.toFixed(2);
+        if (DOM.gmOverrideEnabled) DOM.gmOverrideEnabled.checked = true;
+
+        gmPresetBtns.forEach(function (b) { b.classList.remove("selected"); });
+        btn.classList.add("selected");
+
+        crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, multiVal);
+        sharedRound.crashMultiplier = crashMultiplier;
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        publishSharedRoundState();
+        console.log("[Game Master] Target multiplier set via preset:", crashMultiplier.toFixed(2) + "x");
+      });
+    });
+
     if (DOM.gmBtnForceCrash) {
       DOM.gmBtnForceCrash.addEventListener("click", function () {
-        if (gameState === "RUNNING") isManualCrashPending = true;
+        if (gameState === "RUNNING") {
+          isManualCrashPending = true;
+          sharedRound.state = "CRASHED";
+          sharedRound.crashedAt = Date.now();
+          sharedRound.crashedMultiplier = liveMultiplier;
+          publishSharedRoundState();
+          applyStateTransition("CRASHED");
+          console.log("[Game Master] Force Crash executed at", liveMultiplier.toFixed(2) + "x");
+        }
       });
     }
     if (DOM.gmBtnPauseToggle) {
       DOM.gmBtnPauseToggle.addEventListener("click", function () {
         isGamePaused = !isGamePaused;
         DOM.gmBtnPauseToggle.textContent = isGamePaused ? "RESUME SIMULATION" : "PAUSE SIMULATION";
+        sharedRound.isPaused = isGamePaused;
+        publishSharedRoundState();
       });
     }
     if (DOM.gmFleetCount) {
@@ -2270,25 +2314,30 @@
     }
     if (DOM.gmTargetInput) {
       DOM.gmTargetInput.addEventListener("input", function () {
-        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
-          const manual = parseFloat(DOM.gmTargetInput.value);
-          if (!isNaN(manual) && manual >= 1.01) {
-            crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
-            sharedRound.crashMultiplier = crashMultiplier;
-            if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-            publishSharedRoundState();
-          }
+        const manual = parseFloat(DOM.gmTargetInput.value);
+        if (!isNaN(manual) && manual >= 1.05) {
+          if (DOM.gmOverrideEnabled) DOM.gmOverrideEnabled.checked = true;
+
+          gmPresetBtns.forEach(function (b) {
+            const bVal = parseFloat(b.getAttribute("data-multi"));
+            if (bVal === manual) b.classList.add("selected");
+            else b.classList.remove("selected");
+          });
+
+          crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+          sharedRound.crashMultiplier = crashMultiplier;
+          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          publishSharedRoundState();
         }
       });
     }
     if (DOM.gmOverrideEnabled) {
-      DOM.gmOverrideEnabled.checked = false; // Never lock to 2.50x by default
       DOM.gmOverrideEnabled.addEventListener("change", function () {
         if (DOM.gmOverrideEnabled.checked) {
-          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 2.5) || 2.5;
+          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.0) || 15.0;
           crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
         } else {
-          crashMultiplier = generateCrashPoint();
+          crashMultiplier = generateCrashPoint(roundNumber * 7919);
         }
         sharedRound.crashMultiplier = crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
