@@ -3,11 +3,17 @@
 
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>AERO</title>
-  <meta name="description" content="Aero Crash - Polished Virtual Crash Game Prototype">
-  <link rel="stylesheet" href="style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AEROCRASH — Tactical Flight Simulator</title>
+  <meta name="description" content="AeroCrash - Polished Tactical Crash Simulator with Real-Time Multiplayer and Pilot Wallet">
   <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Google Fonts: Orbitron, Inter, Plus Jakarta Sans, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css">
 
   <!-- Firebase Compat SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -25,19 +31,18 @@
     <div class="splash-container">
       <div class="splash-emblem">
         <svg class="splash-logo" viewBox="0 0 64 64" aria-hidden="true">
-          <polygon
-            points="32,4 37,24 58,34 58,40 37,36 37,50 46,55 46,60 32,57 18,60 18,55 27,50 27,36 6,40 6,34 27,24" />
+          <path d="M32 4 L38 24 L58 34 L58 39 L38 35 L38 49 L46 54 L46 59 L32 56 L18 59 L18 54 L26 49 L26 35 L6 39 L6 34 L26 24 Z" />
         </svg>
       </div>
-      <h1 class="splash-brand">AERO<span style="color: var(--accent-amber);">CRASH</span></h1>
-      <p class="splash-subtitle">TACTICAL FLIGHT</p>
+      <h1 class="splash-brand">AERO<span class="highlight">CRASH</span></h1>
+      <p class="splash-subtitle">TACTICAL HIGH-ALTITUDE SIMULATOR</p>
 
       <div class="splash-progress-track">
         <div id="splash-bar" class="splash-progress-bar" style="width: 0%;"></div>
       </div>
 
       <div id="splash-status" class="splash-status">INITIALIZING FLIGHT ENGINE...</div>
-      <div class="splash-disclaimer">SECURE ENGINE</div>
+      <div class="splash-disclaimer">SECURE TACTICAL ENGINE • ENCRYPTED TELEMETRY</div>
     </div>
   </section>
 
@@ -47,6 +52,12 @@
   <section id="screen-auth" class="app-screen" aria-label="Player Sign In">
     <div class="auth-card">
       <header class="auth-header">
+        <div class="auth-brand-badge">
+          <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z" fill="currentColor"/>
+          </svg>
+          <span>AERO<strong>CRASH</strong></span>
+        </div>
         <h1 id="auth-main-title">OPERATOR ACCESS</h1>
         <p id="auth-main-desc">Sign in or create your Pilot ID to access the flight deck.</p>
       </header>
@@ -62,21 +73,27 @@
       <form id="firebase-auth-form" class="auth-form" onsubmit="return false;" autocomplete="off">
         <div class="form-group" id="group-auth-callsign" style="display: none;">
           <label for="auth-callsign-input">PILOT CALLSIGN</label>
-          <input type="text" id="auth-callsign-input" name="callsign" placeholder="MAVERICK" maxlength="16"
-            spellcheck="false">
+          <div class="input-with-icon">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            <input type="text" id="auth-callsign-input" name="callsign" placeholder="MAVERICK" maxlength="16" spellcheck="false">
+          </div>
           <span class="field-hint">FREE SIGN-UP BONUS: ₹10 AUTOMATICALLY ALLOTTED</span>
         </div>
 
         <div class="form-group" id="group-auth-email">
           <label for="auth-email-input" id="auth-email-label">EMAIL ADDRESS</label>
-          <input type="email" id="auth-email-input" name="email" placeholder="pilot@aerocrash.com" autocomplete="email"
-            spellcheck="false" required>
+          <div class="input-with-icon">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+            <input type="email" id="auth-email-input" name="email" placeholder="pilot@aerocrash.com" autocomplete="email" spellcheck="false" required>
+          </div>
         </div>
 
         <div class="form-group" id="group-auth-password">
           <label for="auth-password-input" id="auth-password-label">PASSWORD</label>
-          <input type="password" id="auth-password-input" name="password" placeholder="••••••••"
-            autocomplete="current-password" required>
+          <div class="input-with-icon">
+            <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            <input type="password" id="auth-password-input" name="password" placeholder="••••••••" autocomplete="current-password" required>
+          </div>
           <span class="field-hint" id="auth-hint">AUTHENTICATED VIA FIREBASE [PROJECT: CARRENTPEWEB]</span>
         </div>
 
@@ -84,8 +101,7 @@
           <p id="auth-notice-text">New registrations receive <strong>₹10 Free Credits</strong> instantly.</p>
         </div>
 
-        <button type="button" id="btn-auth-submit" class="btn-tactical"
-          style="padding: 12px; font-size: 13px; font-weight: 700; width: 100%;">
+        <button type="button" id="btn-auth-submit" class="btn-primary-action">
           SIGN IN & PROCEED
         </button>
       </form>
@@ -93,13 +109,17 @@
   </section>
 
   <!-- ========================================== -->
-  <!-- 03. PAYMENT & WALLET TOPUP SCREEN          -->
+  <!-- 03. PAYMENT & WALLET ONBOARDING SCREEN     -->
   <!-- ========================================== -->
   <section id="screen-payment" class="app-screen" aria-label="Wallet & Deposit">
     <div class="payment-card">
       <header class="payment-header">
-        <h1>PILOT WALLET // ADD FUNDS</h1>
-        <p>Deposit funds to fuel your flight stakes. Free starting bonus of ₹10 allotted.</p>
+        <div class="payment-brand-badge">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
+          <span>PILOT WALLET</span>
+        </div>
+        <h1>DEPOSIT FUNDS</h1>
+        <p>Deposit funds to fuel your flight stakes or proceed with your ₹10 bonus.</p>
       </header>
 
       <!-- WALLET BALANCE BANNER -->
@@ -135,7 +155,7 @@
       <div class="form-group">
         <label for="input-deposit-amount">CUSTOM AMOUNT (₹10 - ₹50,000)</label>
         <div class="stake-input-wrapper">
-          <span class="currency-label" style="font-size: 16px; margin-right: 6px;">₹</span>
+          <span class="currency-label">₹</span>
           <input type="number" id="input-deposit-amount" value="100" min="10" max="50000" step="10">
         </div>
       </div>
@@ -167,9 +187,8 @@
         ADD ₹100 TO WALLET
       </button>
 
-      <button type="button" id="btn-payment-proceed" class="btn-tactical"
-        style="padding: 12px; font-size: 13px; font-weight: 700; width: 100%;">
-        ENTER FLIGHT DECK (PLAY NOW)
+      <button type="button" id="btn-payment-proceed" class="btn-secondary-proceed">
+        ENTER FLIGHT DECK (PLAY NOW) →
       </button>
     </div>
   </section>
@@ -178,50 +197,72 @@
   <!-- 04. MAIN FLIGHT COCKPIT SCREEN             -->
   <!-- ========================================== -->
   <section id="screen-game" class="app-screen" aria-label="Flight Arena">
-    <!-- COCKPIT HEADER -->
+    <!-- COCKPIT TOP HEADER -->
     <header class="game-header">
       <div class="header-left">
         <div class="brand-mark">
-          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
-            <polygon points="16,2 19,12 29,17 29,20 19,18 19,25 23,28 23,30 16,28 9,30 9,28 13,25 13,18 3,20 3,17 13,12"
-              fill="currentColor" />
+          <svg class="brand-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z" fill="currentColor"/>
           </svg>
-          <span class="brand-text">AERO<span style="color: var(--accent-amber);">CRASH</span></span>
+          <span class="brand-text">AERO<span class="highlight">CRASH</span></span>
         </div>
-        <div class="round-info">
-          <span class="label">ROUND</span>
-          <span id="round-id-placeholder" class="value">#10189</span>
+
+        <div class="header-pill-badge round-badge">
+          <span id="round-id-placeholder">ROUND #2847</span>
         </div>
-        <div class="state-info">
-          <span class="label">STATE</span>
-          <span id="agy-state-pill" class="state-pill state-waiting">WAITING</span>
+
+        <div class="header-pill-badge state-badge">
+          <span id="agy-state-dot" class="status-dot green"></span>
+          <span id="agy-state-pill">IN PROGRESS</span>
+        </div>
+
+        <div class="header-pill-badge flight-indicator">
+          <svg class="mini-plane-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
+          <span>FLIGHT</span>
+          <span class="flight-arrow">←</span>
+          <span id="header-flight-multi" class="flight-val">1.00x</span>
         </div>
       </div>
 
       <div class="header-right">
         <!-- GAME MASTER BUTTON: STRICTLY FOR ADMIN ONLY -->
-        <button type="button" id="btn-gm-toggle" class="btn-secondary"
-          style="display: none; border-color: var(--status-warning); color: var(--status-warning);"
-          title="Game Master Controls (Admin Only)">
-          GAME MASTER
+        <button type="button" id="btn-gm-toggle" class="btn-game-master" style="display: none;" title="Game Master Controls (Admin Only)">
+          <svg class="crown-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z"/></svg>
+          <span>GAME MASTER</span>
         </button>
 
-        <button type="button" id="btn-open-deposit" class="btn-add-cash-header" title="Add Money / Wallet Deposit">
-          + ADD MONEY
+        <!-- WALLET BUTTON: OPENS DUAL DEPOSIT / WITHDRAW MODAL -->
+        <button type="button" id="btn-open-wallet" class="btn-wallet-header" title="Wallet: Add Money or Withdraw Funds">
+          <svg class="wallet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><circle cx="18" cy="14" r="1"></circle></svg>
+          <div class="wallet-header-text">
+            <span class="wallet-lbl">BALANCE</span>
+            <span id="header-balance-val" class="wallet-amt">₹10.00</span>
+          </div>
         </button>
 
-        <button type="button" id="btn-sound-toggle" class="btn-secondary" title="Toggle Sound">SND: ON</button>
-        <button type="button" id="btn-fullscreen-toggle" class="btn-secondary" title="Toggle Fullscreen">FS</button>
-        <button type="button" id="btn-rules-toggle" class="btn-secondary"
-          title="Flight Operations Briefing">RULES</button>
+        <!-- SOUND TOGGLE -->
+        <button type="button" id="btn-sound-toggle" class="btn-icon-control" title="Toggle Sound" aria-label="Toggle Sound">
+          <svg class="control-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+        </button>
 
-        <div id="btn-profile-chip" class="user-profile-chip" title="View Pilot Career Dossier" role="button"
-          tabindex="0">
-          <svg class="chip-avatar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" />
-          </svg>
+        <!-- FULLSCREEN TOGGLE -->
+        <button type="button" id="btn-fullscreen-toggle" class="btn-icon-control" title="Toggle Fullscreen" aria-label="Toggle Fullscreen">
+          <svg class="control-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+        </button>
+
+        <!-- RULES MODAL BUTTON -->
+        <button type="button" id="btn-rules-toggle" class="btn-text-control" title="Flight Operations Briefing">
+          <svg class="rules-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path></svg>
+          <span>RULES</span>
+        </button>
+
+        <!-- PROFILE DOSSIER CHIP -->
+        <div id="btn-profile-chip" class="user-profile-chip" title="View Pilot Dossier & Account Settings" role="button" tabindex="0">
+          <div class="user-avatar-circle">
+            <span id="profile-chip-avatar-letter">A</span>
+          </div>
           <span id="profile-chip-name" class="chip-name">PILOT</span>
-          <span id="profile-chip-balance" class="chip-balance">₹10</span>
+          <svg class="dropdown-arrow" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
         </div>
       </div>
     </header>
@@ -236,71 +277,110 @@
     <main class="cockpit-grid">
       <!-- LEFT CONTROLS PANEL -->
       <aside class="cockpit-controls-panel" aria-label="Flight Control and Betting">
-        <div class="panel-header">
-          <h2>FLIGHT CONTROL & STAKE</h2>
+        <!-- TOP CONTROLS TAB -->
+        <div class="panel-nav-tabs">
+          <button type="button" class="panel-tab active" id="tab-ctrl-betting">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
+            <span>FLIGHT CONTROL</span>
+          </button>
+          <button type="button" class="panel-tab" id="tab-ctrl-history">
+            <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            <span>HISTORY</span>
+          </button>
         </div>
 
-        <!-- STAKE STEPPER -->
-        <div class="control-box">
-          <label for="input-stake">STAKE AMOUNT (₹10 - ₹8,000)</label>
-          <div class="stake-stepper">
-            <button type="button" id="btn-stake-dec" class="btn-step" aria-label="Decrease stake">−</button>
-            <div class="stake-input-wrapper">
-              <span class="currency-label" style="font-size: 15px; margin-right: 4px;">₹</span>
-              <input type="number" id="input-stake" value="10" min="10" max="8000" step="10"
-                aria-label="Stake in Rupees">
+        <div id="controls-betting-view" class="controls-view active">
+          <!-- STAKE AMOUNT SECTION -->
+          <div class="control-box stake-section">
+            <label for="input-stake">STAKE AMOUNT</label>
+            <div class="stake-stepper-card">
+              <span class="currency-symbol">₹</span>
+              <input type="number" id="input-stake" value="10.00" min="10" max="8000" step="10" aria-label="Stake in Rupees">
+              <div class="stepper-arrows">
+                <button type="button" id="btn-stake-inc" class="btn-arrow-step" aria-label="Increase stake">▲</button>
+                <button type="button" id="btn-stake-dec" class="btn-arrow-step" aria-label="Decrease stake">▼</button>
+              </div>
             </div>
-            <button type="button" id="btn-stake-inc" class="btn-step" aria-label="Increase stake">+</button>
-          </div>
 
-          <div class="quick-stake-grid">
-            <button type="button" class="btn-secondary" data-value="10">10</button>
-            <button type="button" class="btn-secondary" data-value="50">50</button>
-            <button type="button" class="btn-secondary" data-value="100">100</button>
-            <button type="button" class="btn-secondary" data-value="500">500</button>
-            <button type="button" class="btn-secondary" data-value="1000">1K</button>
-            <button type="button" class="btn-secondary" data-value="2000">2K</button>
-            <button type="button" class="btn-secondary" data-value="5000">5K</button>
-            <button type="button" class="btn-secondary" data-value="8000">8K</button>
-          </div>
-        </div>
-
-        <!-- AUTO CASHOUT -->
-        <div class="control-box">
-          <label for="input-auto-cashout">AUTO CASHOUT</label>
-          <div class="auto-cashout-row">
-            <label class="auto-toggle-label" for="check-auto-cashout">
-              <input type="checkbox" id="check-auto-cashout">
-              <span class="toggle-text">AUTO</span>
-            </label>
-            <div class="auto-input-wrapper">
-              <input type="number" id="input-auto-cashout" value="2.00" min="1.05" max="100.00" step="0.05"
-                aria-label="Auto cashout multiplier">
-              <span class="multi-label">X</span>
+            <!-- QUICK CHIP GRID: [10, 25, 50, 100], [200, 500, 1K, 5K] -->
+            <div class="quick-stake-grid">
+              <button type="button" class="btn-chip active" data-value="10">10</button>
+              <button type="button" class="btn-chip" data-value="25">25</button>
+              <button type="button" class="btn-chip" data-value="50">50</button>
+              <button type="button" class="btn-chip" data-value="100">100</button>
+              <button type="button" class="btn-chip" data-value="200">200</button>
+              <button type="button" class="btn-chip" data-value="500">500</button>
+              <button type="button" class="btn-chip" data-value="1000">1K</button>
+              <button type="button" class="btn-chip" data-value="5000">5K</button>
             </div>
           </div>
-        </div>
 
-        <!-- ACTION BUTTON -->
-        <div class="action-section">
-          <div class="action-card">
-            <button type="button" id="btn-action" class="btn-action-main state-bet">
-              <span id="action-btn-text">ENTER BETTING</span>
-              <span id="action-btn-subtext" class="btn-subtext">Stake: ₹10</span>
+          <!-- AUTO CASHOUT SECTION -->
+          <div class="control-box auto-section">
+            <div class="auto-header-row">
+              <label for="input-auto-cashout">AUTO CASHOUT</label>
+              <label class="switch-toggle" for="check-auto-cashout">
+                <input type="checkbox" id="check-auto-cashout">
+                <span class="slider round"></span>
+              </label>
+            </div>
+
+            <div class="auto-input-card">
+              <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
+              <input type="number" id="input-auto-cashout" value="2.00" min="1.05" max="100.00" step="0.05" aria-label="Auto cashout multiplier">
+              <button type="button" id="btn-clear-autocashout" class="btn-clear-input" aria-label="Reset auto cashout">✕</button>
+            </div>
+          </div>
+
+          <!-- TAKEOFF / CASH OUT ACTION BUTTON -->
+          <div class="action-section">
+            <button type="button" id="btn-action" class="btn-action-takeoff state-bet">
+              <svg class="action-plane-icon" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/>
+              </svg>
+              <div class="action-btn-content">
+                <span id="action-btn-text">TAKEOFF</span>
+                <span id="action-btn-subtext" class="btn-subtext">Stake: ₹10.00</span>
+              </div>
             </button>
             <div id="action-feedback" class="action-feedback"></div>
           </div>
+
+          <!-- WALLET BALANCE CARD (CLICKABLE) -->
+          <div id="card-wallet-bottom" class="wallet-summary-card" role="button" tabindex="0" title="Click to Deposit or Withdraw Funds">
+            <div class="wallet-left">
+              <div class="wallet-icon-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><circle cx="18" cy="14" r="1"></circle></svg>
+              </div>
+              <div class="wallet-details">
+                <span class="wallet-card-lbl">WALLET BALANCE</span>
+                <span id="user-vc-display" class="wallet-card-val">₹10.00</span>
+              </div>
+            </div>
+            <div class="wallet-right-arrow">›</div>
+          </div>
+
+          <!-- MINI STATS SUMMARY -->
+          <div class="stats-summary-card">
+            <div class="stat-col">
+              <span class="stat-col-lbl">TOTAL STAKED</span>
+              <span id="stat-total-staked" class="stat-col-val">₹0.00</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-col">
+              <span class="stat-col-lbl">TOTAL WINS</span>
+              <span id="stat-total-wins" class="stat-col-val">₹0.00</span>
+            </div>
+          </div>
         </div>
 
-        <!-- MINI COCKPIT STATS -->
-        <div class="cockpit-stats-mini">
-          <div class="stat-row">
-            <span class="stat-label">WALLET BALANCE:</span>
-            <span id="user-vc-display" class="stat-value" style="color: var(--status-success);">₹10.00</span>
+        <!-- HISTORY TAB VIEW -->
+        <div id="controls-history-view" class="controls-view">
+          <div class="history-view-header">
+            <h3>PERSONAL FLIGHT LOGS</h3>
           </div>
-          <div class="stat-row">
-            <span class="stat-label">TOTAL STAKED:</span>
-            <span id="stat-total-staked" class="stat-value">₹0</span>
+          <div class="personal-logs-list" id="personal-logs-container">
+            <div class="empty-logs">No completed flights yet.</div>
           </div>
         </div>
       </aside>
@@ -311,7 +391,7 @@
         <div class="arena-viewport">
           <canvas id="flight-canvas"></canvas>
 
-          <!-- TAKEOFF COUNTDOWN OVERLAY (NO OVERLAP WITH MULTIPLIER) -->
+          <!-- TAKEOFF COUNTDOWN OVERLAY -->
           <div id="countdown-overlay" class="countdown-overlay hidden">
             <span class="countdown-title">TAKEOFF IN</span>
             <span id="countdown-digits" class="countdown-digits">8</span>
@@ -323,23 +403,45 @@
             <span id="crash-multiplier" class="crash-multiplier">2.50x</span>
           </div>
 
-          <!-- CENTER HUD MULTIPLIER (HIDDEN DURING BETTING COUNTDOWN) -->
+          <!-- CENTER HUD MULTIPLIER -->
           <div id="hud-multiplier-container" class="hud-multiplier-container hidden">
             <span id="hud-multiplier" class="hud-multiplier">1.00x</span>
             <span class="hud-subtitle">CURRENT MULTIPLIER</span>
           </div>
 
-          <!-- CORNER TELEMETRY DATA -->
+          <!-- CORNER TELEMETRY DATA (MATCHING SCREENSHOT) -->
           <div class="telemetry-corner top-left">
-            <div>ALT: <strong id="telem-alt">0000 M</strong></div>
-            <div>VEL: <strong id="telem-vel">0.00 MACH</strong></div>
+            <div>ALTITUDE <strong id="telem-alt">0 FT</strong></div>
+            <div>SPEED <strong id="telem-vel">0 KTS</strong></div>
+            <div>TRAJECTORY <strong id="telem-traj">0.0°</strong></div>
           </div>
+
           <div class="telemetry-corner top-right">
-            <div>SYS: <strong>NOMINAL</strong></div>
-            <div>RADAR: <strong>ACTIVE</strong></div>
+            <div class="status-indicator-box">
+              <span class="status-lbl">STATUS</span>
+              <span class="status-mode">MANUAL</span>
+              <span class="status-dot-orange"></span>
+              <span class="status-active-text">ACTIVE</span>
+            </div>
           </div>
-          <div class="telemetry-corner bottom-left">
-            <div>VECTOR: <strong>STABLE</strong></div>
+
+          <!-- ALTITUDE LADDER (RIGHT SIDE) -->
+          <div class="altitude-ladder" aria-hidden="true">
+            <div class="ladder-tick" style="top: 5%;"><span>10.0x</span></div>
+            <div class="ladder-tick" style="top: 25%;"><span>7.5x</span></div>
+            <div class="ladder-tick" style="top: 50%;"><span>5.0x</span></div>
+            <div class="ladder-tick" style="top: 75%;"><span>2.5x</span></div>
+            <div class="ladder-tick active" style="top: 92%;"><span>1.0x</span><div class="ladder-indicator-marker"></div></div>
+          </div>
+
+          <!-- TIME AXIS (BOTTOM OF CANVAS) -->
+          <div class="flight-time-axis" aria-hidden="true">
+            <span>0s</span>
+            <span>5s</span>
+            <span>10s</span>
+            <span>15s</span>
+            <span>20s</span>
+            <span>25s</span>
           </div>
 
           <!-- CASHOUT RESULT BANNER -->
@@ -351,17 +453,22 @@
           <!-- SQUADRON TABLE -->
           <div class="dock-section-squadron">
             <div class="dock-header">
-              <h3>LIVE SQUADRON BETS</h3>
-              <span id="squadron-count-badge" class="squadron-count-badge">0 PILOTS</span>
+              <div class="dock-title-group">
+                <svg class="dock-plane-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
+                <h3>LIVE SQUADRON BETS</h3>
+              </div>
+              <span id="squadron-count-badge" class="squadron-count-badge">● 136 BETS</span>
             </div>
             <div class="bets-table-wrapper">
               <table id="squadron-bets-table" class="squadron-table">
                 <thead>
                   <tr>
-                    <th>PILOT</th>
+                    <th>#</th>
+                    <th>PLAYER</th>
                     <th>STAKE</th>
-                    <th>EXIT</th>
-                    <th>PAYOUT</th>
+                    <th>CASHOUT</th>
+                    <th>MULTIPLIER</th>
+                    <th>PROFIT</th>
                   </tr>
                 </thead>
                 <tbody></tbody>
@@ -369,10 +476,13 @@
             </div>
           </div>
 
-          <!-- ACTIVITY FEED -->
+          <!-- ACTIVITY TELEMETRY FEED -->
           <div class="dock-section-feed">
             <div class="dock-header">
-              <h3>FLIGHT TELEMETRY FEED</h3>
+              <div class="dock-title-group">
+                <svg class="dock-radar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a10 10 0 0 1 10 10"></path><path d="M12 12l5-5"></path></svg>
+                <h3>FLIGHT TELEMETRY</h3>
+              </div>
             </div>
             <div id="activity-feed-list" class="feed-list"></div>
           </div>
@@ -383,18 +493,215 @@
     <!-- FOOTER STATUS LINE -->
     <footer class="game-footer">
       <div class="status-left">
-        <span class="status-pulse"></span>
-        <span>ENGINE: rAF-V1.0</span>
-        <span>LIMITS: ₹10 - ₹8,000</span>
+        <span class="brand-footer">AEROCRASH</span>
+        <span class="footer-dash">—</span>
+        <span class="footer-motto">CRASH • BET • WIN</span>
       </div>
       <div class="status-right">
-        <span>PRESS <strong>SPACEBAR</strong> TO BET / CASH OUT</span>
+        <span class="wifi-icon">📶</span>
+        <span class="status-dot green"></span>
+        <span>SERVER ONLINE</span>
+        <span id="footer-live-clock" class="footer-clock">22:17:32</span>
       </div>
     </footer>
   </section>
 
   <!-- ========================================== -->
-  <!-- 05. PILOT CAREER DOSSIER MODAL             -->
+  <!-- 05. PILOT WALLET MODAL (DEPOSIT & WITHDRAW)-->
+  <!-- ========================================== -->
+  <div id="modal-wallet" class="modal" role="dialog" aria-modal="true" aria-labelledby="wallet-heading">
+    <div class="modal-box modal-wallet-box">
+      <header class="modal-header">
+        <div class="modal-title-wrap">
+          <svg class="modal-wallet-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><circle cx="18" cy="14" r="1"></circle></svg>
+          <h2 id="wallet-heading">PILOT WALLET HUB</h2>
+        </div>
+        <button type="button" id="btn-wallet-close" class="modal-close" aria-label="Close Wallet">×</button>
+      </header>
+
+      <!-- WALLET TABS -->
+      <div class="wallet-nav-tabs">
+        <button type="button" class="wallet-nav-btn active" id="tab-wallet-deposit" data-tab="deposit">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 8 8 12 12 16"></polyline><line x1="16" y1="12" x2="8" y2="12"></line></svg>
+          <span>ADD MONEY (DEPOSIT)</span>
+        </button>
+        <button type="button" class="wallet-nav-btn" id="tab-wallet-withdraw" data-tab="withdraw">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 16 16 12 12 8"></polyline><line x1="8" y1="12" x2="16" y2="12"></line></svg>
+          <span>WITHDRAW TO BANK / UPI</span>
+        </button>
+      </div>
+
+      <div class="modal-body wallet-modal-body">
+        <!-- WALLET BALANCE HEADER -->
+        <div class="wallet-modal-balance-card">
+          <div class="bal-meta">
+            <span class="bal-label">AVAILABLE WALLET BALANCE</span>
+            <div id="modal-wallet-balance-val" class="bal-number">₹10.00</div>
+          </div>
+          <div class="bal-badge">
+            <span>INSTANT PAYOUTS</span>
+            <strong>24x7 ACTIVE</strong>
+          </div>
+        </div>
+
+        <div id="wallet-status-alert" class="deposit-status-alert"></div>
+
+        <!-- 1. DEPOSIT TAB CONTENT -->
+        <div id="wallet-tab-content-deposit" class="wallet-tab-panel active">
+          <div class="form-group">
+            <label>SELECT DEPOSIT AMOUNT</label>
+            <div class="deposit-grid">
+              <button type="button" class="deposit-chip-btn" data-amt="50">+₹50</button>
+              <button type="button" class="deposit-chip-btn selected" data-amt="100">+₹100</button>
+              <button type="button" class="deposit-chip-btn" data-amt="200">+₹200</button>
+              <button type="button" class="deposit-chip-btn" data-amt="500">+₹500</button>
+              <button type="button" class="deposit-chip-btn" data-amt="1000">+₹1,000</button>
+              <button type="button" class="deposit-chip-btn" data-amt="2000">+₹2,000</button>
+              <button type="button" class="deposit-chip-btn" data-amt="5000">+₹5,000</button>
+              <button type="button" class="deposit-chip-btn" data-amt="8000">+₹8,000</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="modal-input-deposit-amount">CUSTOM DEPOSIT AMOUNT (₹10 - ₹50,000)</label>
+            <div class="stake-input-wrapper">
+              <span class="currency-label">₹</span>
+              <input type="number" id="modal-input-deposit-amount" value="100" min="10" max="50000" step="10">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>PAYMENT METHOD</label>
+            <div class="payment-methods-grid">
+              <div class="payment-method-item selected" data-method="upi">
+                <strong>UPI</strong>
+                <span>GPay / PhonePe</span>
+              </div>
+              <div class="payment-method-item" data-method="paytm">
+                <strong>PAYTM</strong>
+                <span>Wallet / QR</span>
+              </div>
+              <div class="payment-method-item" data-method="netbanking">
+                <strong>BANK</strong>
+                <span>Net Banking</span>
+              </div>
+              <div class="payment-method-item" data-method="card">
+                <strong>CARD</strong>
+                <span>Visa / RuPay</span>
+              </div>
+            </div>
+          </div>
+
+          <button type="button" id="btn-modal-deposit-confirm" class="btn-deposit-action">
+            ADD ₹100 TO WALLET
+          </button>
+        </div>
+
+        <!-- 2. WITHDRAWAL TAB CONTENT (BANK / UPI) -->
+        <div id="wallet-tab-content-withdraw" class="wallet-tab-panel">
+          <div class="payout-type-selector">
+            <label class="payout-type-card active" id="type-opt-bank">
+              <input type="radio" name="payout_type" value="bank" checked>
+              <div class="payout-card-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M14 10v11M12 2L2 7h20L12 2z"></path></svg>
+                <div class="payout-title">BANK TRANSFER (IMPS/NEFT)</div>
+                <div class="payout-sub">Instant Bank Account Deposit</div>
+              </div>
+            </label>
+
+            <label class="payout-type-card" id="type-opt-upi">
+              <input type="radio" name="payout_type" value="upi">
+              <div class="payout-card-inner">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                <div class="payout-title">UPI PAYOUT (VPA)</div>
+                <div class="payout-sub">GPay / PhonePe / Paytm UPI</div>
+              </div>
+            </label>
+          </div>
+
+          <!-- BANK DETAILS FORM -->
+          <div id="payout-bank-form" class="payout-form-group">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="withdraw-bank-name">BANK NAME</label>
+                <input type="text" id="withdraw-bank-name" placeholder="e.g. State Bank of India / HDFC Bank">
+              </div>
+              <div class="form-group flex-1">
+                <label for="withdraw-account-holder">ACCOUNT HOLDER NAME</label>
+                <input type="text" id="withdraw-account-holder" placeholder="Full Name as in Passbook">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="withdraw-account-number">ACCOUNT NUMBER</label>
+                <input type="password" id="withdraw-account-number" placeholder="Enter Account Number" autocomplete="off">
+              </div>
+              <div class="form-group flex-1">
+                <label for="withdraw-account-number-confirm">CONFIRM ACCOUNT NUMBER</label>
+                <input type="text" id="withdraw-account-number-confirm" placeholder="Re-enter Account Number" autocomplete="off">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="withdraw-ifsc-code">IFSC CODE (11 CHARACTERS)</label>
+              <input type="text" id="withdraw-ifsc-code" placeholder="e.g. SBIN0001234 / HDFC0001234" maxlength="11" style="text-transform:uppercase;">
+            </div>
+          </div>
+
+          <!-- UPI DETAILS FORM -->
+          <div id="payout-upi-form" class="payout-form-group" style="display: none;">
+            <div class="form-group">
+              <label for="withdraw-upi-name">ACCOUNT HOLDER NAME</label>
+              <input type="text" id="withdraw-upi-name" placeholder="Full Name">
+            </div>
+            <div class="form-group">
+              <label for="withdraw-upi-id">UPI ID / VPA</label>
+              <input type="text" id="withdraw-upi-id" placeholder="e.g. 9876543210@paytm or pilot@okhdfcbank" spellcheck="false">
+              <span class="field-hint">Supports all UPI Apps: Google Pay, PhonePe, Paytm, BHIM, Amazon Pay.</span>
+            </div>
+          </div>
+
+          <!-- WITHDRAWAL AMOUNT SELECTION -->
+          <div class="form-group">
+            <div class="withdraw-amt-header">
+              <label for="withdraw-amount-input">WITHDRAWAL AMOUNT (₹)</label>
+              <span class="min-withdraw-hint">MIN: ₹50 • MAX: ALL BALANCE</span>
+            </div>
+            <div class="stake-input-wrapper">
+              <span class="currency-label">₹</span>
+              <input type="number" id="withdraw-amount-input" value="50" min="50" step="10">
+            </div>
+
+            <div class="withdraw-quick-percents">
+              <button type="button" class="btn-percent-chip" data-percent="25">25%</button>
+              <button type="button" class="btn-percent-chip" data-percent="50">50%</button>
+              <button type="button" class="btn-percent-chip" data-percent="75">75%</button>
+              <button type="button" class="btn-percent-chip" data-percent="100">100% (ALL)</button>
+            </div>
+          </div>
+
+          <div class="withdraw-fee-notice">
+            <div class="fee-line">
+              <span>Transfer Fee:</span>
+              <strong style="color:var(--status-success);">FREE (₹0.00)</strong>
+            </div>
+            <div class="fee-line">
+              <span>Payout Speed:</span>
+              <strong>Instant IMPS (1-5 Minutes)</strong>
+            </div>
+          </div>
+
+          <button type="button" id="btn-submit-withdrawal" class="btn-withdraw-action">
+            SUBMIT WITHDRAWAL REQUEST
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 06. PILOT CAREER DOSSIER MODAL             -->
   <!-- ========================================== -->
   <div id="modal-profile" class="modal" role="dialog" aria-modal="true" aria-labelledby="dossier-heading">
     <div class="modal-box">
@@ -413,7 +720,7 @@
             </div>
             <div class="dossier-item">
               <span class="label">WALLET BALANCE:</span>
-              <span id="dossier-display-balance" class="value" style="color:var(--status-success);">₹10</span>
+              <span id="dossier-display-balance" class="value" style="color:var(--status-success);">₹10.00</span>
             </div>
             <div class="dossier-item">
               <span class="label">ROUNDS PLAYED:</span>
@@ -437,33 +744,17 @@
             </div>
             <div class="dossier-item">
               <span class="label">BEST PAYOUT:</span>
-              <span id="dossier-best-payout" class="value">₹0</span>
+              <span id="dossier-best-payout" class="value">₹0.00</span>
             </div>
-          </div>
-        </div>
-
-        <div class="dossier-section">
-          <h3>RECENT FLIGHT LOGS</h3>
-          <div class="history-table-wrapper">
-            <table class="personal-history-table">
-              <thead>
-                <tr>
-                  <th>ROUND</th>
-                  <th>STAKE</th>
-                  <th>EXIT</th>
-                  <th>PROFIT</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
           </div>
         </div>
 
         <div class="dossier-section">
           <h3>ACCOUNT CONTROLS</h3>
           <div class="danger-actions">
-            <button type="button" id="btn-open-deposit-from-dossier" class="btn-secondary"
-              style="border-color:var(--status-success);color:var(--status-success);">ADD FUNDS (₹)</button>
+            <button type="button" id="btn-open-wallet-from-dossier" class="btn-wallet-action-dossier">
+              💳 OPEN WALLET (ADD / WITHDRAW)
+            </button>
             <button type="button" id="btn-reset-stats" class="btn-secondary">RESET STATS</button>
             <button type="button" id="btn-auth-signout" class="btn-danger">SIGN OUT</button>
           </div>
@@ -471,8 +762,7 @@
       </div>
 
       <footer class="modal-footer">
-        <button type="button" onclick="document.getElementById('modal-profile').classList.remove('active')"
-          class="btn-tactical">
+        <button type="button" id="btn-dossier-close-bottom" class="btn-primary-action" style="width: auto; padding: 10px 20px;">
           RETURN TO COCKPIT
         </button>
       </footer>
@@ -480,29 +770,26 @@
   </div>
 
   <!-- ========================================== -->
-  <!-- 06. GAME MASTER DRAWER (ADMIN ONLY)        -->
+  <!-- 07. GAME MASTER DRAWER (ADMIN ONLY)        -->
   <!-- ========================================== -->
   <aside id="drawer-game-master" class="drawer" role="dialog" aria-modal="true" aria-labelledby="gm-drawer-heading">
     <header class="drawer-header">
-      <h2 id="gm-drawer-heading">GAME MASTER CONTROLS [ADMIN]</h2>
+      <h2 id="gm-drawer-heading">👑 GAME MASTER CONTROLS [ADMIN]</h2>
       <button type="button" id="btn-gm-close" class="drawer-close" aria-label="Close Game Master">×</button>
     </header>
 
     <div class="drawer-content">
       <div class="drawer-section">
         <h3>ROUND OVERRIDE</h3>
-        <label
-          style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
-          <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL
-          TARGET
+        <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
+          <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL TARGET
         </label>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-          <label for="gm-target-input" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">TARGET
-            MULTIPLIER:</label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+          <label for="gm-target-input" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">TARGET MULTIPLIER:</label>
           <input type="number" id="gm-target-input" value="2.50" step="0.1" min="1.01" max="1000.0"
-            style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:4px 8px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
+            style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:6px 10px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
         </div>
-        <div class="drawer-grid-2" style="margin-top:10px;">
+        <div class="drawer-grid-2" style="margin-top:12px;">
           <button type="button" id="gm-btn-force-crash" class="btn-danger">FORCE CRASH NOW</button>
           <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">PAUSE SIMULATION</button>
         </div>
@@ -510,13 +797,11 @@
 
       <div class="drawer-section">
         <h3>FLEET SIMULATION</h3>
-        <div
-          style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:4px;">
+        <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:6px;">
           <span style="color:var(--text-dim);">PILOT FLEET SIZE:</span>
           <span id="gm-fleet-value" style="color:var(--accent-amber);font-weight:700;">150</span>
         </div>
-        <input type="range" id="gm-fleet-count" min="10" max="300" value="150"
-          style="width:100%;accent-color:var(--accent-amber);">
+        <input type="range" id="gm-fleet-count" min="10" max="300" value="150" style="width:100%;accent-color:var(--accent-amber);">
       </div>
 
       <div class="drawer-section">
@@ -536,14 +821,13 @@
   </aside>
 
   <!-- ========================================== -->
-  <!-- 07. FLIGHT OPERATIONS BRIEFING MODAL       -->
+  <!-- 08. FLIGHT OPERATIONS BRIEFING MODAL       -->
   <!-- ========================================== -->
   <div id="modal-onboarding" class="modal" role="dialog" aria-modal="true" aria-labelledby="briefing-heading">
     <div class="modal-box">
       <header class="modal-header">
         <h2 id="briefing-heading">FLIGHT OPERATIONS BRIEFING</h2>
-        <button type="button" onclick="document.getElementById('modal-onboarding').classList.remove('active')"
-          class="modal-close" aria-label="Close Briefing">×</button>
+        <button type="button" id="btn-rules-close" class="modal-close" aria-label="Close Briefing">×</button>
       </header>
 
       <div class="modal-body">
@@ -554,33 +838,27 @@
           </div>
           <div class="onboarding-step">
             <h4>02 // MULTIPLIER ACCELERATION</h4>
-            <p>As the aircraft climbs into the sky, the payout multiplier ascends exponentially from 1.00x upward.</p>
+            <p>As the aircraft climbs into the high-altitude radar, the payout multiplier ascends exponentially from 1.00x upward.</p>
           </div>
           <div class="onboarding-step">
             <h4>03 // CASH OUT BEFORE FLEW AWAY</h4>
             <p>Hit CASH OUT or press SPACEBAR before the aircraft crashes to secure your winnings in Rupees (₹).</p>
           </div>
+          <div class="onboarding-step">
+            <h4>04 // INSTANT BANK & UPI WITHDRAWAL</h4>
+            <p>Your winnings can be instantly withdrawn to any Bank Account via IMPS or directly to your UPI ID 24x7.</p>
+          </div>
         </div>
       </div>
 
       <footer class="modal-footer">
-        <button type="button" id="btn-onboarding-dismiss" class="btn-tactical">
+        <button type="button" id="btn-onboarding-dismiss" class="btn-primary-action" style="width:auto; padding: 10px 24px;">
           PROCEED TO COCKPIT
         </button>
       </footer>
     </div>
   </div>
 
-  <!-- ========================================== -->
-  <!-- 08. DEV TELEMETRY OVERLAY [Ctrl+Shift+D]  -->
-  <!-- ========================================== -->
-  <div id="debug-overlay">
-    <div class="debug-title">DEV TELEMETRY [Ctrl+Shift+D]</div>
-    <div>FPS: 60</div>
-    <div>STATUS: NOMINAL</div>
-  </div>
-
   <script src="script.js"></script>
 </body>
-
 </html>

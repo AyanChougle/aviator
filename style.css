@@ -1,34 +1,57 @@
-/* AERO CRASH - TACTICAL AVIATION STYLING */
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800;900&family=Rajdhani:wght@500;600;700&family=Share+Tech+Mono&display=swap');
+/* ===================================================================
+   AEROCRASH — TACTICAL HIGH-ALTITUDE FLIGHT SIMULATOR STYLING
+   =================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700;800&family=Orbitron:wght@600;700;800;900&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 
 :root {
-  --bg-core: #0a0c0f;
-  --bg-surface-1: #11141a;
-  --bg-surface-2: #181d24;
-  --bg-surface-3: #222832;
-  --bg-elevated: #2a323e;
-  --border-dim: #252b36;
-  --border-mid: #384252;
-  --border-high: #4b586d;
-  --border-active: #d97718;
-  --text-main: #f4f3ef;
-  --text-muted: #8c93a0;
-  --text-dim: #5a6270;
-  --accent-amber: #d97718;
-  --accent-amber-hover: #ea8523;
-  --accent-amber-dim: #2a1f14;
-  --status-success: #288e4f;
-  --status-success-dim: #132b1b;
-  --status-danger: #bc3636;
-  --status-danger-dim: #321616;
-  --status-info: #357ca5;
-  --status-warning: #c28822;
-  --font-display: "Orbitron", Impact, Haettenschweiler, "Arial Narrow Bold", sans-serif;
-  --font-mono: "Share Tech Mono", Consolas, Monaco, "Lucida Console", monospace;
-  --font-ui: "Rajdhani", "Segoe UI", system-ui, -apple-system, sans-serif;
-  --radius-sm: 3px;
-  --radius-md: 6px;
-  --radius-lg: 8px;
+  /* BACKGROUND PALETTE */
+  --bg-core: #07090e;
+  --bg-dark: #0b0f17;
+  --bg-surface-1: #0e141f;
+  --bg-surface-2: #141c2b;
+  --bg-surface-3: #1a2538;
+  --bg-elevated: #223048;
+  
+  /* BORDERS & DIVIDERS */
+  --border-dim: #182232;
+  --border-mid: #223046;
+  --border-high: #324462;
+  --border-glow: rgba(255, 115, 0, 0.4);
+
+  /* TYPOGRAPHY COLORS */
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+  --text-dark: #0f172a;
+
+  /* TACTICAL ORANGE / AMBER ACCENT (MATCHING SCREENSHOT) */
+  --accent-amber: #ff7300;
+  --accent-amber-hover: #ff851a;
+  --accent-amber-dim: rgba(255, 115, 0, 0.12);
+  --accent-amber-gradient: linear-gradient(135deg, #ff851a 0%, #ff5500 100%);
+  --accent-amber-glow: 0 0 20px rgba(255, 115, 0, 0.35);
+
+  /* STATUS COLORS */
+  --status-success: #10b981;
+  --status-success-dim: rgba(16, 185, 129, 0.12);
+  --status-success-gradient: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --status-danger: #ef4444;
+  --status-danger-dim: rgba(239, 68, 68, 0.12);
+  --status-warning: #f59e0b;
+  --status-info: #38bdf8;
+
+  /* FONTS */
+  --font-display: "Orbitron", "Plus Jakarta Sans", sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+  --font-ui: "Inter", "Plus Jakarta Sans", -apple-system, sans-serif;
+
+  /* RADIUS & SHADOWS */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 16px 40px rgba(0, 0, 0, 0.8);
 }
 
 *,
@@ -46,17 +69,17 @@ body {
   background-color: var(--bg-core);
   color: var(--text-main);
   font-family: var(--font-ui);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 500;
   line-height: 1.4;
   overflow-x: hidden;
   overscroll-behavior: none;
   user-select: none;
   -webkit-font-smoothing: antialiased;
-  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* SCREEN MANAGEMENT */
+/* SCREEN TOGGLING */
 .hidden {
   display: none !important;
 }
@@ -71,7 +94,7 @@ body {
   display: flex;
 }
 
-/* BUTTONS & CORE INPUTS (SOLID ONLY - NO GRADIENTS) */
+/* COMMON INPUTS & BUTTONS */
 button {
   font-family: var(--font-ui);
   cursor: pointer;
@@ -79,14 +102,12 @@ button {
   background-color: var(--bg-surface-2);
   color: var(--text-main);
   border-radius: var(--radius-sm);
-  padding: 6px 12px;
+  padding: 8px 14px;
   font-size: 13px;
   font-weight: 600;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    color 0.15s ease;
+  transition: all 0.15s ease;
   outline: none;
+  touch-action: manipulation;
 }
 
 button:hover:not(:disabled) {
@@ -95,51 +116,27 @@ button:hover:not(:disabled) {
 }
 
 button:active:not(:disabled) {
-  background-color: var(--bg-elevated);
+  transform: scale(0.98);
 }
 
 button:disabled {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: not-allowed;
 }
 
-button:focus-visible,
-input:focus-visible {
-  outline: 2px solid var(--accent-amber);
-  outline-offset: 1px;
+input {
+  font-family: var(--font-ui);
+  outline: none;
 }
 
-.btn-tactical {
-  background-color: var(--accent-amber);
-  border-color: var(--accent-amber);
-  color: #0a0c0f;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-}
-
-.btn-tactical:hover:not(:disabled) {
-  background-color: var(--accent-amber-hover);
-  border-color: var(--accent-amber-hover);
-}
-
-.btn-secondary {
-  background-color: var(--bg-surface-2);
-  border-color: var(--border-mid);
-  color: var(--text-main);
-}
-
-.btn-danger {
-  background-color: var(--status-danger);
-  border-color: var(--status-danger);
-  color: var(--text-main);
-}
-
-/* SCREEN 1: SPLASH */
+/* ===================================================================
+   01. SPLASH SCREEN
+   =================================================================== */
 #screen-splash {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: var(--bg-core);
+  background: radial-gradient(circle at center, #111827 0%, var(--bg-core) 100%);
   padding: 24px;
 }
 
@@ -153,125 +150,151 @@ input:focus-visible {
 }
 
 .splash-emblem {
-  margin-bottom: 24px;
+  margin-bottom: 20px;
+  filter: drop-shadow(0 0 15px rgba(255, 115, 0, 0.4));
+  animation: floatPlane 3s ease-in-out infinite;
+}
+
+@keyframes floatPlane {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
 }
 
 .splash-logo {
-  width: 84px;
-  height: 84px;
+  width: 80px;
+  height: 80px;
   fill: var(--accent-amber);
 }
 
 .splash-brand {
   font-family: var(--font-display);
-  font-size: 40px;
-  letter-spacing: 4px;
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: 3px;
   color: var(--text-main);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
+}
+
+.splash-brand .highlight {
+  color: var(--accent-amber);
 }
 
 .splash-subtitle {
   font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 2px;
+  font-size: 11px;
+  letter-spacing: 2.5px;
   color: var(--text-muted);
   text-transform: uppercase;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 }
 
 .splash-progress-track {
   width: 100%;
   height: 4px;
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
-  border-radius: 2px;
+  border-radius: 4px;
   overflow: hidden;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border-dim);
 }
 
 .splash-progress-bar {
   width: 0%;
   height: 100%;
-  background-color: var(--accent-amber);
-  transition: width 0.05s linear;
+  background: var(--accent-amber-gradient);
+  box-shadow: 0 0 10px var(--accent-amber);
+  transition: width 0.06s linear;
 }
 
 .splash-status {
   font-family: var(--font-mono);
   font-size: 11px;
   color: var(--accent-amber);
-  letter-spacing: 1px;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
 .splash-disclaimer {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-dim);
   border: 1px solid var(--border-dim);
-  background-color: var(--bg-surface-1);
-  padding: 8px 12px;
+  background-color: rgba(14, 20, 31, 0.7);
+  padding: 8px 14px;
   border-radius: var(--radius-sm);
-  letter-spacing: 0.5px;
+  letter-spacing: 1px;
 }
-/* SCREEN 2: AUTH */
+
+/* ===================================================================
+   02. AUTHENTICATION SCREEN
+   =================================================================== */
 #screen-auth {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background-color: var(--bg-core);
-  padding: 24px;
+  background: radial-gradient(circle at 50% 30%, #131c2c 0%, var(--bg-core) 100%);
+  padding: 24px 16px;
 }
 
 .auth-card {
   width: 100%;
-  max-width: 480px;
+  max-width: 440px;
   background-color: var(--bg-surface-1);
   border: 1px solid var(--border-mid);
-  border-radius: var(--radius-md);
-  padding: 32px;
+  border-radius: var(--radius-lg);
+  padding: 32px 28px;
+  box-shadow: var(--shadow-modal);
+  backdrop-filter: blur(12px);
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 28px;
+  margin-bottom: 24px;
+}
+
+.auth-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 1.5px;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.auth-brand-badge .brand-icon {
+  width: 16px;
+  height: 16px;
+  fill: var(--accent-amber);
+}
+
+.auth-brand-badge strong {
+  color: var(--accent-amber);
 }
 
 .auth-header h1 {
   font-family: var(--font-display);
-  font-size: 28px;
-  letter-spacing: 2px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
   margin-bottom: 6px;
   color: var(--text-main);
 }
+
 .auth-header p {
-  font-family: var(--font-mono);
   font-size: 12px;
   color: var(--text-muted);
-  letter-spacing: 1px;
 }
-.auth-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.form-group label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.8px;
-}
+
 .auth-tabs {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   margin-bottom: 20px;
   background-color: var(--bg-surface-2);
@@ -283,15 +306,14 @@ input:focus-visible {
 .auth-tab-btn {
   background: none;
   border: none;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 10px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.5px;
   padding: 8px 4px;
   text-align: center;
-  cursor: pointer;
-  border-radius: 2px;
+  border-radius: var(--radius-xs);
   transition: all 0.15s ease;
 }
 
@@ -301,17 +323,124 @@ input:focus-visible {
 }
 
 .auth-tab-btn.active {
-  background-color: var(--accent-amber);
-  color: #0a0c0f;
+  background: var(--accent-amber-gradient);
+  color: var(--text-dark);
+  box-shadow: 0 2px 8px rgba(255, 115, 0, 0.3);
 }
 
 .auth-tab-btn.admin-tab.active {
-  background-color: var(--status-warning);
-  color: #0a0c0f;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: var(--text-dark);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-group label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon .field-icon {
+  position: absolute;
+  left: 12px;
+  width: 16px;
+  height: 16px;
+  color: var(--text-dim);
+  pointer-events: none;
+}
+
+.input-with-icon input,
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"] {
+  width: 100%;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  color: var(--text-main);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.input-with-icon input {
+  padding-left: 36px;
+}
+
+.form-group input:focus {
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 2px rgba(255, 115, 0, 0.15);
+}
+
+.field-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+
+.auth-disclaimer-box {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  border-left: 3px solid var(--accent-amber);
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+}
+
+.auth-disclaimer-box p {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.auth-disclaimer-box strong {
+  color: var(--status-success);
+}
+
+.btn-primary-action {
+  background: var(--accent-amber-gradient);
+  border: none;
+  color: var(--text-dark);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--accent-amber-glow);
+  width: 100%;
+}
+
+.btn-primary-action:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9533 0%, #ff6600 100%);
 }
 
 .auth-status-box {
-  padding: 8px 12px;
+  padding: 10px 14px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 11px;
@@ -333,104 +462,203 @@ input:focus-visible {
   color: var(--status-success);
 }
 
-.form-group input[type="text"],
-.form-group input[type="email"],
-.form-group input[type="password"] {
+/* ===================================================================
+   03. PAYMENT ONBOARDING SCREEN
+   =================================================================== */
+#screen-payment {
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle at 50% 30%, #142030 0%, var(--bg-core) 100%);
+  padding: 24px 16px;
+}
+
+.payment-card {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--bg-surface-1);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-lg);
+  padding: 28px 24px;
+  box-shadow: var(--shadow-modal);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.payment-header {
+  text-align: center;
+  border-bottom: 1px solid var(--border-dim);
+  padding-bottom: 12px;
+}
+
+.payment-brand-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-mid);
-  color: var(--text-main);
-  padding: 10px 14px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 1px;
-}
-
-.form-group input[type="text"]:focus,
-.form-group input[type="email"]:focus,
-.form-group input[type="password"]:focus {
-  border-color: var(--accent-amber);
-}
-
-.field-hint {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-family: var(--font-display);
   font-size: 11px;
-  color: var(--text-dim);
-}
-/* AVATAR SELECTOR */
-.avatar-grid {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 8px;
+  color: var(--accent-amber);
+  margin-bottom: 8px;
 }
 
-.avatar-option {
+.payment-brand-badge .brand-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent-amber);
+}
+
+.payment-header h1 {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--text-main);
+  margin-bottom: 4px;
+}
+
+.payment-header p {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.wallet-balance-banner {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  border-left: 4px solid var(--status-success);
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.wallet-banner-info .label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wallet-banner-info .val {
+  font-family: var(--font-mono);
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--status-success);
+  letter-spacing: 0.5px;
+}
+
+.free-credit-badge {
+  background-color: var(--status-success-dim);
+  border: 1px solid var(--status-success);
+  color: var(--status-success);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: var(--radius-xs);
+  text-align: right;
+  line-height: 1.3;
+}
+
+.deposit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.deposit-chip-btn {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 0;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+}
+
+.deposit-chip-btn:hover,
+.deposit-chip-btn.selected {
+  border-color: var(--status-success);
+  background-color: var(--status-success-dim);
+  color: var(--status-success);
+}
+
+.payment-methods-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+
+.payment-method-item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 10px 6px;
+  gap: 3px;
+  padding: 8px 4px;
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-dim);
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition:
-    border-color 0.15s ease,
-    background-color 0.15s ease;
-}
-
-.avatar-option svg {
-  width: 24px;
-  height: 24px;
-  fill: var(--text-muted);
-  margin-bottom: 4px;
-  transition: fill 0.15s ease;
-}
-
-.avatar-name {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.avatar-option:hover {
-  background-color: var(--bg-surface-3);
-  border-color: var(--border-high);
-}
-
-.avatar-option.selected {
-  background-color: var(--accent-amber-dim);
-  border-color: var(--accent-amber);
-}
-
-.avatar-option.selected svg {
-  fill: var(--accent-amber);
-}
-.avatar-option.selected .avatar-name {
-  color: var(--accent-amber);
-  font-weight: 700;
-}
-
-.auth-disclaimer-box {
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
-  border-left: 3px solid var(--accent-amber);
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-}
-
-.auth-disclaimer-box p {
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
-  line-height: 1.4;
-}
-.auth-disclaimer-box strong {
-  color: var(--text-main);
+  transition: all 0.15s ease;
 }
 
-/* SCREEN 3: GAME LAYOUT */
+.payment-method-item strong {
+  font-family: var(--font-ui);
+  font-weight: 800;
+  font-size: 11px;
+}
+
+.payment-method-item:hover,
+.payment-method-item.selected {
+  border-color: var(--accent-amber);
+  background-color: var(--accent-amber-dim);
+  color: var(--accent-amber);
+}
+
+.btn-deposit-action {
+  background: var(--status-success-gradient);
+  border: none;
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 800;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.3);
+  width: 100%;
+}
+
+.btn-deposit-action:hover:not(:disabled) {
+  background: linear-gradient(135deg, #18ce92 0%, #06a775 100%);
+}
+
+.btn-secondary-proceed {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  color: var(--text-main);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  width: 100%;
+}
+
+/* ===================================================================
+   04. MAIN FLIGHT COCKPIT SCREEN (MATCHING SCREENSHOT)
+   =================================================================== */
 #screen-game {
   flex-direction: column;
   height: 100vh;
@@ -438,147 +666,275 @@ input:focus-visible {
   background-color: var(--bg-core);
 }
 
-/* HEADER */
+/* COCKPIT TOP HEADER */
 .game-header {
-  height: 50px;
-  background-color: var(--bg-surface-1);
+  height: 48px;
+  background-color: var(--bg-dark);
   border-bottom: 1px solid var(--border-dim);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 16px;
   flex-shrink: 0;
+  z-index: 10;
 }
 
 .header-left,
-.header-center,
 .header-right {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .brand-mark {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  margin-right: 6px;
 }
 
 .brand-icon {
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   fill: var(--accent-amber);
 }
 
 .brand-text {
   font-family: var(--font-display);
-  font-size: 18px;
+  font-size: 16px;
+  font-weight: 900;
   letter-spacing: 1.5px;
   color: var(--text-main);
 }
 
-.round-info,
-.state-info {
+.brand-text .highlight {
+  color: var(--accent-amber);
+}
+
+.header-pill-badge {
   display: flex;
   align-items: center;
   gap: 6px;
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-dim);
-  padding: 4px 8px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
-}
-.label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
-.value,
-.state-pill {
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 700;
+  color: var(--text-muted);
+}
+
+.round-badge {
   color: var(--text-main);
 }
 
-.state-pill {
-  padding: 2px 6px;
-  border-radius: 2px;
-  background-color: var(--bg-surface-3);
+.state-badge {
+  background-color: rgba(16, 185, 129, 0.08);
+  border-color: rgba(16, 185, 129, 0.25);
+  color: var(--status-success);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.status-dot.green {
+  background-color: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+
+.status-dot.amber {
+  background-color: var(--accent-amber);
+  box-shadow: 0 0 6px var(--accent-amber);
+}
+
+.status-dot.red {
+  background-color: var(--status-danger);
+  box-shadow: 0 0 6px var(--status-danger);
+}
+
+.flight-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+}
+
+.mini-plane-icon {
+  width: 12px;
+  height: 12px;
+  fill: var(--text-muted);
+}
+
+.flight-arrow {
+  color: var(--text-dim);
+}
+
+.flight-val {
+  color: var(--accent-amber);
+  font-weight: 800;
+}
+
+/* HEADER RIGHT CONTROLS */
+.btn-game-master {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(245, 158, 11, 0.1);
+  border: 1px solid var(--status-warning);
+  color: var(--status-warning);
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  border-radius: var(--radius-sm);
   letter-spacing: 0.5px;
 }
 
-.state-pill.state-waiting {
-  color: var(--text-muted);
-}
-.state-pill.state-betting {
-  color: var(--accent-amber);
-  background-color: var(--accent-amber-dim);
-}
-.state-pill.state-launching {
-  color: var(--status-warning);
-}
-.state-pill.state-running {
-  color: var(--status-success);
-  background-color: var(--status-success-dim);
-}
-.state-pill.state-crashed {
-  color: var(--status-danger);
-  background-color: var(--status-danger-dim);
-}
-.state-pill.state-result {
-  color: var(--status-info);
+.crown-icon {
+  width: 14px;
+  height: 14px;
 }
 
-/* HEADER RIGHT & HISTORY TICKER */
-.user-profile-chip {
+.btn-wallet-header {
   display: flex;
   align-items: center;
   gap: 8px;
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
+  border: 1px solid var(--border-mid);
   padding: 4px 10px;
   border-radius: var(--radius-sm);
+  color: var(--text-main);
+  transition: all 0.15s ease;
+}
+
+.btn-wallet-header:hover {
+  border-color: var(--status-success);
+  background-color: var(--bg-surface-3);
+}
+
+.wallet-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--status-success);
+}
+
+.wallet-header-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.1;
+}
+
+.wallet-lbl {
+  font-family: var(--font-ui);
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.wallet-amt {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--status-success);
+}
+
+.btn-icon-control {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+}
+
+.btn-icon-control:hover {
+  color: var(--text-main);
+  border-color: var(--border-high);
+}
+
+.control-svg {
+  width: 15px;
+  height: 15px;
+}
+
+.btn-text-control {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+}
+
+.rules-svg {
+  width: 14px;
+  height: 14px;
+}
+
+.user-profile-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  padding: 3px 8px;
+  border-radius: 20px;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
 .user-profile-chip:hover {
   border-color: var(--border-high);
+  background-color: var(--bg-surface-3);
 }
 
-.chip-avatar {
-  width: 16px;
-  height: 16px;
-  fill: var(--accent-amber);
+.user-avatar-circle {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-amber-gradient);
+  color: var(--text-dark);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .chip-name {
   font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
+  font-weight: 700;
   color: var(--text-main);
 }
 
-.chip-balance {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-amber);
-  background-color: var(--bg-surface-3);
-  padding: 2px 6px;
-  border-radius: 2px;
+.dropdown-arrow {
+  width: 12px;
+  height: 12px;
+  fill: var(--text-dim);
 }
 
-/* HISTORY TICKER */
+/* RECENT MULTIPLIER TICKER */
 .history-ticker-bar {
-  height: 32px;
-  background-color: var(--bg-surface-2);
+  height: 30px;
+  background-color: #090e17;
   border-bottom: 1px solid var(--border-dim);
   display: flex;
   align-items: center;
   padding: 0 16px;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
   overflow-x: auto;
   scrollbar-width: none;
@@ -590,7 +946,8 @@ input:focus-visible {
 
 .ticker-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9px;
+  font-weight: 700;
   color: var(--text-dim);
   text-transform: uppercase;
   white-space: nowrap;
@@ -599,9 +956,7 @@ input:focus-visible {
 .ticker-list {
   display: flex;
   align-items: center;
-  gap: 6px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  gap: 5px;
 }
 
 .ticker-badge {
@@ -609,7 +964,7 @@ input:focus-visible {
   font-size: 10px;
   font-weight: 700;
   padding: 2px 6px;
-  border-radius: 2px;
+  border-radius: 3px;
   white-space: nowrap;
   background-color: var(--bg-surface-1);
   border: 1px solid var(--border-dim);
@@ -617,21 +972,30 @@ input:focus-visible {
 
 .ticker-badge.multi-low {
   color: var(--status-danger);
-}
-.ticker-badge.multi-mid {
-  color: var(--accent-amber);
-}
-.ticker-badge.multi-high {
-  color: var(--status-success);
-  border-color: var(--status-success);
+  border-color: rgba(239, 68, 68, 0.25);
+  background-color: rgba(239, 68, 68, 0.05);
 }
 
-/* COCKPIT_GRID & BETTING PANEL */
+.ticker-badge.multi-mid {
+  color: var(--accent-amber);
+  border-color: rgba(255, 115, 0, 0.25);
+  background-color: rgba(255, 115, 0, 0.05);
+}
+
+.ticker-badge.multi-high {
+  color: var(--status-success);
+  border-color: rgba(16, 185, 129, 0.3);
+  background-color: rgba(16, 185, 129, 0.08);
+}
+
+/* ===================================================================
+   COCKPIT GRID & BETTING CONTROLS
+   =================================================================== */
 .cockpit-grid {
   display: grid;
-  grid-template-columns: 360px 1fr;
+  grid-template-columns: 340px 1fr;
   flex: 1;
-  height: calc(100vh - 50px - 32px - 24px);
+  height: calc(100vh - 48px - 30px - 22px);
   overflow: hidden;
 }
 
@@ -640,70 +1004,236 @@ input:focus-visible {
   border-right: 1px solid var(--border-dim);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  padding: 16px;
-  gap: 14px;
+  padding: 14px;
+  gap: 12px;
   overflow-y: auto;
 }
 
-.panel-header {
-  border-bottom: 1px solid var(--border-dim);
-  padding-bottom: 8px;
-}
-
-.panel-header h2 {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: var(--accent-amber);
-}
-
-.control-box {
+.panel-nav-tabs {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.control-box label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-dim);
+  gap: 16px;
+  padding-bottom: 2px;
 }
 
-.stake-stepper {
+.panel-tab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 6px 4px;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  border-radius: 0;
+  transition: all 0.15s ease;
 }
 
-.btn-step {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  font-family: var(--font-mono);
-  font-size: 16px;
+.panel-tab .tab-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.panel-tab:hover {
+  color: var(--text-muted);
+  background: none;
+}
+
+.panel-tab.active {
+  color: var(--accent-amber);
+  border-bottom-color: var(--accent-amber);
+  background: none;
+}
+
+.controls-view {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+}
+
+.controls-view.active {
+  display: flex;
+}
+
+/* STAKE AMOUNT CARD */
+.stake-section label,
+.auto-section label {
+  font-family: var(--font-ui);
+  font-size: 10px;
   font-weight: 700;
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-mid);
-  color: var(--text-main);
+  text-transform: uppercase;
+  color: var(--text-muted);
+  letter-spacing: 0.8px;
 }
 
-.stake-input-wrapper {
-  flex: 1;
+.stake-stepper-card {
   display: flex;
   align-items: center;
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-sm);
-  padding: 0 8px;
+  padding: 2px 10px;
+  transition: border-color 0.15s ease;
 }
 
-.stake-input-wrapper input {
-  width: 100%;
+.stake-stepper-card:focus-within {
+  border-color: var(--accent-amber);
+}
+
+.currency-symbol {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+
+.stake-stepper-card input {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  padding: 8px 0;
+  outline: none;
+}
+
+.stepper-arrows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.btn-arrow-step {
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  font-size: 8px;
+  color: var(--text-dim);
+  line-height: 1;
+  border-radius: 2px;
+}
+
+.btn-arrow-step:hover {
+  color: var(--text-main);
+  background-color: var(--bg-surface-3);
+}
+
+/* QUICK STAKE CHIPS: [10, 25, 50, 100], [200, 500, 1K, 5K] */
+.quick-stake-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+  margin-top: 6px;
+}
+
+.btn-chip {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 0;
+  text-align: center;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.btn-chip:hover,
+.btn-chip.active {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background-color: var(--accent-amber-dim);
+}
+
+/* AUTO CASHOUT SECTION */
+.auto-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+/* IOS / MODERN TOGGLE SWITCH */
+.switch-toggle {
+  position: relative;
+  display: inline-block;
+  width: 36px;
+  height: 20px;
+}
+
+.switch-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--bg-surface-3);
+  border: 1px solid var(--border-mid);
+  transition: .2s ease;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 2px;
+  bottom: 2px;
+  background-color: var(--text-muted);
+  transition: .2s ease;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
+
+input:checked + .slider:before {
+  transform: translateX(16px);
+  background-color: var(--text-dark);
+}
+
+.auto-input-card {
+  display: flex;
+  align-items: center;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 2px 10px;
+}
+
+.auto-input-card:focus-within {
+  border-color: var(--accent-amber);
+}
+
+.speedometer-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-dim);
+  margin-right: 6px;
+}
+
+.auto-input-card input {
+  flex: 1;
   background: none;
   border: none;
   color: var(--text-main);
@@ -714,161 +1244,108 @@ input:focus-visible {
   outline: none;
 }
 
-.currency-label {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-amber);
-}
-
-/* QUICK BETS, AUTO CASHOUT, ACTION BUTTON */
-.quick-stake-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
-  margin-top: 6px;
-}
-
-.quick-stake-grid button {
-  padding: 5px 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-}
-
-.auto-cashout-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.auto-toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  user-select: none;
-}
-
-.auto-toggle-label input[type="checkbox"] {
-  accent-color: var(--accent-amber);
-  width: 14px;
-  height: 14px;
-  cursor: pointer;
-}
-
-.toggle-text {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-main);
-}
-.auto-input-wrapper {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-sm);
-  padding: 0 8px;
-}
-
-.auto-input-wrapper input {
-  width: 100%;
+.btn-clear-input {
   background: none;
   border: none;
-  color: var(--text-main);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  font-weight: 700;
-  padding: 6px 0;
-  outline: none;
-}
-
-.multi-label {
-  font-family: var(--font-mono);
+  color: var(--text-dim);
   font-size: 11px;
-  font-weight: 700;
-  color: var(--accent-amber);
+  padding: 4px;
 }
 
-/* ACTION CARD & BIG BUTTON */
+.btn-clear-input:hover {
+  color: var(--text-main);
+  background: none;
+}
+
+/* BIG TAKEOFF / CASHOUT ACTION BUTTON */
 .action-section {
-  margin-top: 4px;
+  margin-top: 2px;
 }
 
-.action-card {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.btn-action-main {
+.btn-action-takeoff {
   width: 100%;
-  height: 64px;
-  border-radius: var(--radius-sm);
+  height: 60px;
+  border-radius: var(--radius-md);
   font-family: var(--font-display);
-  font-size: 20px;
+  font-size: 18px;
+  font-weight: 900;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  line-height: 1.2;
-  border: 1px solid transparent;
+  gap: 10px;
+  border: none;
+  transition: all 0.15s ease;
 }
 
-/* ACTION BUTTON STATES */
-.btn-action-main.state-bet {
-  background-color: var(--accent-amber);
-  border-color: var(--accent-amber);
-  color: #0a0c0f;
+.action-plane-icon {
+  width: 22px;
+  height: 22px;
+  transition: transform 0.2s ease;
 }
 
-.btn-action-main.state-bet:hover:not(:disabled) {
-  background-color: var(--accent-amber-hover);
-  border-color: var(--accent-amber-hover);
-}
-.btn-action-main.state-cancel {
-  background-color: var(--status-danger);
-  border-color: var(--status-danger);
-  color: var(--text-main);
-}
-
-.btn-action-main.state-cashout {
-  background-color: var(--status-success);
-  border-color: var(--status-success);
-  color: #f4f3ef;
-}
-
-.btn-action-main.state-cashout:hover:not(:disabled) {
-  background-color: #2e9e5b;
-  border-color: #2e9e5b;
+.action-btn-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  line-height: 1.1;
 }
 
 .btn-subtext {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.8px;
   font-weight: 600;
-  opacity: 0.95;
+  letter-spacing: 0.5px;
+  opacity: 0.85;
+}
+
+/* BUTTON STATES */
+.btn-action-takeoff.state-bet {
+  background: var(--accent-amber-gradient);
+  color: var(--text-dark);
+  box-shadow: 0 4px 18px rgba(255, 115, 0, 0.4);
+}
+
+.btn-action-takeoff.state-bet:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9533 0%, #ff6600 100%);
+  box-shadow: 0 6px 22px rgba(255, 115, 0, 0.5);
+}
+
+.btn-action-takeoff.state-cancel {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: var(--text-main);
+  box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+}
+
+.btn-action-takeoff.state-cashout {
+  background: var(--status-success-gradient);
+  color: var(--text-main);
+  box-shadow: 0 4px 20px rgba(16, 185, 129, 0.45);
+  animation: pulseCashout 1.2s infinite alternate;
+}
+
+@keyframes pulseCashout {
+  0% { transform: scale(1); box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4); }
+  100% { transform: scale(1.02); box-shadow: 0 6px 26px rgba(16, 185, 129, 0.7); }
 }
 
 .action-feedback {
   display: none;
-  padding: 8px 12px;
+  padding: 6px 10px;
   border-radius: var(--radius-sm);
   font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   text-align: center;
+  margin-top: 6px;
 }
 
 .action-feedback.active {
   display: block;
 }
+
 .action-feedback.success {
   background-color: var(--status-success-dim);
   border: 1px solid var(--status-success);
@@ -881,36 +1358,164 @@ input:focus-visible {
   color: var(--status-danger);
 }
 
-/* MINI STATS & RESOORCE FAST RESETMENT */
-.cockpit-stats-mini {
+/* WALLET SUMMARY CARD (CLICKABLE ON LEFT PANEL) */
+.wallet-summary-card {
   background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
+  border: 1px solid var(--border-mid);
   border-radius: var(--radius-sm);
-  padding: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all 0.15s ease;
   margin-top: auto;
 }
 
-.stat-row {
+.wallet-summary-card:hover {
+  border-color: var(--status-success);
+  background-color: var(--bg-surface-3);
+}
+
+.wallet-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.wallet-icon-box {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-xs);
+  background-color: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wallet-icon-box svg {
+  width: 16px;
+  height: 16px;
+  color: var(--status-success);
+}
+
+.wallet-details {
+  display: flex;
+  flex-direction: column;
+}
+
+.wallet-card-lbl {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.wallet-card-val {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--status-success);
+}
+
+.wallet-right-arrow {
+  color: var(--text-dim);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* MINI STATS SUMMARY CARD */
+.stats-summary-card {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.stat-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-col-lbl {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+
+.stat-col-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+.stat-divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border-dim);
+}
+
+/* HISTORY TAB LIST */
+.history-view-header h3 {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+  margin-bottom: 8px;
+}
+
+.personal-logs-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty-logs {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 20px 0;
+}
+
+.personal-log-row {
   display: flex;
   justify-content: space-between;
-  padding: 2px 0;
+  align-items: center;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  padding: 8px 10px;
+  border-radius: var(--radius-xs);
   font-family: var(--font-mono);
   font-size: 11px;
 }
 
-.stat-row .stat-label {
-  color: var(--text-dim);
+.personal-log-row.win {
+  border-left: 3px solid var(--status-success);
 }
 
-.stat-row .stat-value {
-  color: var(--text-main);
-  font-weight: 600;
+.personal-log-row.loss {
+  border-left: 3px solid var(--status-danger);
 }
 
-/* FLIGHT ARENA */
+/* ===================================================================
+   FLIGHT ARENA & CANVAS VIEWPORT (RADAR THEME)
+   =================================================================== */
 .flight-arena-panel {
   display: grid;
-  grid-template-rows: 1fr 180px;
+  grid-template-rows: 1fr 190px;
   background-color: var(--bg-core);
   overflow: hidden;
 }
@@ -919,7 +1524,7 @@ input:focus-visible {
   position: relative;
   width: 100%;
   height: 100%;
-  background-color: #0a0c0f33;
+  background: radial-gradient(circle at 60% 40%, #0d1522 0%, #06090f 100%);
   border-bottom: 1px solid var(--border-dim);
   overflow: hidden;
 }
@@ -943,16 +1548,17 @@ input:focus-visible {
   z-index: 10;
   pointer-events: none;
 }
+
 .countdown-overlay.hidden,
 .crash-overlay.hidden {
-  display: none;
+  display: none !important;
 }
 
 .countdown-title,
 .crash-title {
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 2px;
   text-transform: uppercase;
   margin-bottom: 4px;
@@ -964,24 +1570,29 @@ input:focus-visible {
 
 .countdown-digits {
   font-family: var(--font-display);
-  font-size: 76px;
+  font-size: 72px;
+  font-weight: 900;
   line-height: 1;
   color: var(--text-main);
+  text-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
 }
 
 .crash-title {
   color: var(--status-danger);
-  font-size: 15px;
+  font-size: 16px;
+  letter-spacing: 3px;
 }
 
 .crash-multiplier {
   font-family: var(--font-display);
   font-size: 64px;
+  font-weight: 900;
   line-height: 1;
   color: var(--status-danger);
+  text-shadow: 0 0 25px rgba(239, 68, 68, 0.5);
 }
 
-/* HUD MULTIPLIER */
+/* CENTER HUD MULTIPLIER (MATCHING SCREENSHOT) */
 .hud-multiplier-container {
   position: absolute;
   top: 50%;
@@ -1000,13 +1611,14 @@ input:focus-visible {
 
 .hud-multiplier {
   font-family: var(--font-display);
-  font-size: 96px;
-  line-height: 0.9;
-  color: var(--text-main);
+  font-size: clamp(48px, 9vw, 92px);
+  font-weight: 900;
+  line-height: 0.95;
+  color: #f1f5f9;
   letter-spacing: 2px;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
 }
 
-/* HUD CORNERS & TELEMETRY */
 .hud-subtitle {
   font-family: var(--font-mono);
   font-size: 11px;
@@ -1014,65 +1626,169 @@ input:focus-visible {
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-dim);
-  margin-top: 6px;
+  margin-top: 8px;
+  position: relative;
 }
 
+.hud-subtitle::before {
+  content: "";
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: var(--accent-amber);
+  margin: 0 auto 6px auto;
+  border-radius: 2px;
+}
+
+/* CORNER TELEMETRY */
 .telemetry-corner {
   position: absolute;
   font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.5;
+  font-size: 11px;
+  line-height: 1.6;
   color: var(--text-dim);
   pointer-events: none;
   z-index: 4;
 }
 
+.telemetry-corner strong {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
 .telemetry-corner.top-left {
-  top: 12px;
-  left: 12px;
+  top: 14px;
+  left: 16px;
 }
 
 .telemetry-corner.top-right {
-  top: 12px;
-  right: 12px;
-  text-align: right;
+  top: 14px;
+  right: 16px;
 }
 
-.telemetry-corner.bottom-left {
-  bottom: 12px;
-  left: 12px;
+.status-indicator-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(14, 20, 31, 0.6);
+  border: 1px solid var(--border-dim);
+  padding: 4px 10px;
+  border-radius: var(--radius-xs);
 }
 
+.status-lbl {
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.status-mode {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.status-dot-orange {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--accent-amber);
+  box-shadow: 0 0 6px var(--accent-amber);
+}
+
+.status-active-text {
+  color: var(--accent-amber);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+/* ALTITUDE LADDER (RIGHT SIDE) */
+.altitude-ladder {
+  position: absolute;
+  top: 0;
+  right: 8px;
+  bottom: 24px;
+  width: 44px;
+  border-right: 1px dashed rgba(255, 255, 255, 0.08);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.ladder-tick {
+  position: absolute;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+}
+
+.ladder-tick.active span {
+  color: var(--accent-amber);
+  font-weight: 800;
+}
+
+.ladder-indicator-marker {
+  width: 3px;
+  height: 10px;
+  background-color: var(--accent-amber);
+  border-radius: 2px;
+}
+
+/* FLIGHT TIME AXIS (BOTTOM) */
+.flight-time-axis {
+  position: absolute;
+  bottom: 4px;
+  left: 16px;
+  right: 60px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--text-dim);
+  border-top: 1px dashed rgba(255, 255, 255, 0.08);
+  padding-top: 2px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* CASHOUT RESULT BANNER */
 .player-result-banner {
   position: absolute;
   top: 16px;
   left: 50%;
   transform: translateX(-50%);
-  background-color: var(--status-success);
-  color: #f4f3ef;
+  background: var(--status-success-gradient);
+  color: var(--text-main);
   font-family: var(--font-mono);
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 1px;
-  padding: 6px 16px;
-  border-radius: var(--radius-sm);
+  padding: 6px 18px;
+  border-radius: 20px;
   display: none;
   z-index: 11;
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
 }
 
 .player-result-banner.active {
   display: block;
 }
 
-/* FLIGHT FLOOR DOCK & TABLUS */
+/* ===================================================================
+   FLOOR DOCK: SQUADRON BETS & FLIGHT TELEMETRY (MATCHING SCREENSHOT)
+   =================================================================== */
 .flight-floor-dock {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: 1.8fr 1.2fr;
   background-color: var(--bg-surface-1);
   border-top: 1px solid var(--border-dim);
-  height: 180px;
+  height: 190px;
   overflow: hidden;
 }
+
 .dock-section-squadron {
   border-right: 1px solid var(--border-dim);
   display: flex;
@@ -1087,7 +1803,7 @@ input:focus-visible {
 }
 
 .dock-header {
-  height: 30px;
+  height: 32px;
   background-color: var(--bg-surface-2);
   border-bottom: 1px solid var(--border-dim);
   display: flex;
@@ -1097,13 +1813,38 @@ input:focus-visible {
   flex-shrink: 0;
 }
 
+.dock-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dock-plane-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent-amber);
+}
+
+.dock-radar-icon {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-amber);
+}
+
 .dock-header h3 {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-main);
+}
+
+.squadron-count-badge {
   font-family: var(--font-mono);
   font-size: 10px;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-muted);
+  color: var(--accent-amber);
 }
 
 .bets-table-wrapper {
@@ -1116,7 +1857,7 @@ input:focus-visible {
   width: 100%;
   border-collapse: collapse;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
 }
 
 .squadron-table th {
@@ -1125,15 +1866,17 @@ input:focus-visible {
   background-color: var(--bg-surface-3);
   color: var(--text-dim);
   text-align: left;
-  padding: 4px 8px;
-  font-weight: 600;
+  padding: 5px 8px;
+  font-size: 9px;
+  font-weight: 700;
   text-transform: uppercase;
   z-index: 1;
+  border-bottom: 1px solid var(--border-dim);
 }
 
 .squadron-table td {
-  padding: 3px 8px;
-  border-bottom: 1px solid var(--bg-surface-2);
+  padding: 4px 8px;
+  border-bottom: 1px solid rgba(24, 34, 50, 0.6);
   color: var(--text-muted);
 }
 
@@ -1141,15 +1884,20 @@ input:focus-visible {
   color: var(--text-main);
 }
 
-.squadron-table tr.cashed-out {
+.squadron-table .profit-pos {
   color: var(--status-success);
+  font-weight: 700;
 }
 
-/* FEED & FOOTER */
+.squadron-table .profit-neg {
+  color: var(--status-danger);
+  font-weight: 700;
+}
+
 .feed-list {
   flex: 1;
   overflow-y: auto;
-  padding: 6px 12px;
+  padding: 8px 12px;
   display: flex;
   flex-direction: column-reverse;
   gap: 4px;
@@ -1158,33 +1906,49 @@ input:focus-visible {
 
 .feed-item {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 10.5px;
   color: var(--text-dim);
-  line-height: 1.3;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  line-height: 1.4;
 }
 
-.feed-item.cashout {
-  color: var(--status-success);
+.feed-item .dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--accent-amber);
 }
-.feed-item.crashed {
-  color: var(--status-danger);
+
+.feed-item.cashout .dot {
+  background-color: var(--status-success);
+}
+
+.feed-item.crashed .dot {
+  background-color: var(--status-danger);
 }
 
 .feed-item .timestamp {
   color: var(--text-dim);
-  margin-right: 4px;
 }
 
-.squadron-count-badge {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--accent-amber);
+.feed-item .event-text {
+  color: var(--text-muted);
 }
 
-/* STATUS LINE FOOTER */
+.feed-item .multi-val {
+  margin-left: auto;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* ===================================================================
+   FOOTER STATUS LINE
+   =================================================================== */
 .game-footer {
-  height: 24px;
-  background-color: var(--bg-surface-1);
+  height: 22px;
+  background-color: #06080d;
   border-top: 1px solid var(--border-dim);
   display: flex;
   align-items: center;
@@ -1197,21 +1961,34 @@ input:focus-visible {
   letter-spacing: 0.5px;
 }
 
-.status-left,
+.status-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brand-footer {
+  font-weight: 700;
+  color: var(--text-muted);
+}
+
+.footer-dash {
+  color: var(--text-dim);
+}
+
 .status-right {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 6px;
 }
 
-.status-pulse {
-  width: 6px;
-  height: 6px;
-  background-color: var(--status-success);
-  border-radius: 50%;
+.footer-clock {
+  color: var(--text-muted);
 }
 
-/* MODALS & DRAWERS */
+/* ===================================================================
+   05. PILOT WALLET MODAL (DEPOSIT & BANK/UPI WITHDRAWAL)
+   =================================================================== */
 .modal {
   display: none;
   position: fixed;
@@ -1219,28 +1996,33 @@ input:focus-visible {
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(10, 12, 15, 0.85);
+  background-color: rgba(4, 7, 12, 0.85);
+  backdrop-filter: blur(8px);
   z-index: 100;
   align-items: center;
   justify-content: center;
-  padding: 20px;
+  padding: 16px;
 }
+
 .modal.active {
   display: flex;
 }
+
 .modal-box {
   width: 100%;
-  max-width: 560px;
+  max-width: 540px;
   background-color: var(--bg-surface-1);
   border: 1px solid var(--border-mid);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  max-height: 92vh;
+  box-shadow: var(--shadow-modal);
 }
+
 .modal-header {
-  height: 46px;
+  height: 48px;
   background-color: var(--bg-surface-2);
   border-bottom: 1px solid var(--border-dim);
   display: flex;
@@ -1250,28 +2032,85 @@ input:focus-visible {
   flex-shrink: 0;
 }
 
-.modal-header h2 {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
+.modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-wallet-icon {
+  width: 18px;
+  height: 18px;
   color: var(--accent-amber);
 }
+
+.modal-header h2 {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-main);
+}
+
 .modal-close {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 22px;
-  padding: 0 6px;
+  font-size: 20px;
+  padding: 2px 6px;
   line-height: 1;
 }
+
 .modal-close:hover {
   color: var(--text-main);
   background: none;
-  border: none;
 }
-.modal-body {
+
+/* WALLET NAV TABS (DEPOSIT VS WITHDRAW) */
+.wallet-nav-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  background-color: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 4px;
+  gap: 4px;
+}
+
+.wallet-nav-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-weight: 800;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.wallet-nav-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.wallet-nav-btn:hover {
+  color: var(--text-main);
+  background-color: var(--bg-surface-3);
+}
+
+.wallet-nav-btn.active {
+  background: var(--bg-surface-1);
+  color: var(--accent-amber);
+  border: 1px solid var(--border-mid);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.wallet-modal-body {
   padding: 20px;
   overflow-y: auto;
   display: flex;
@@ -1279,16 +2118,204 @@ input:focus-visible {
   gap: 16px;
 }
 
-.modal-footer {
-  padding: 12px 20px;
-  background-color: var(--bg-surface-2);
-  border-top: 1px solid var(--border-dim);
+.wallet-modal-balance-card {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(20, 28, 43, 0.8) 100%);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
   display: flex;
-  justify-content: flex-end;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.bal-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.bal-number {
+  font-family: var(--font-mono);
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--status-success);
+}
+
+.bal-badge {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.bal-badge strong {
+  display: block;
+  color: var(--status-success);
+}
+
+.wallet-tab-panel {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.wallet-tab-panel.active {
+  display: flex;
+}
+
+/* PAYOUT TYPE SELECTOR (BANK VS UPI) */
+.payout-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
 
-/* DOSSIER MODAL STYLES */
+.payout-type-card {
+  position: relative;
+  cursor: pointer;
+}
+
+.payout-type-card input {
+  position: absolute;
+  opacity: 0;
+}
+
+.payout-card-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 12px 8px;
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  gap: 4px;
+}
+
+.payout-card-inner svg {
+  width: 22px;
+  height: 22px;
+  color: var(--text-muted);
+}
+
+.payout-title {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--text-main);
+}
+
+.payout-sub {
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+.payout-type-card:hover .payout-card-inner {
+  border-color: var(--border-high);
+}
+
+.payout-type-card.active .payout-card-inner {
+  border-color: var(--accent-amber);
+  background-color: var(--accent-amber-dim);
+}
+
+.payout-type-card.active .payout-card-inner svg {
+  color: var(--accent-amber);
+}
+
+.payout-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.form-row {
+  display: flex;
+  gap: 8px;
+}
+
+.flex-1 {
+  flex: 1;
+}
+
+.withdraw-amt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.min-withdraw-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.withdraw-quick-percents {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.btn-percent-chip {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 0;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.btn-percent-chip:hover {
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  background-color: var(--accent-amber-dim);
+}
+
+.withdraw-fee-notice {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-dim);
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 11px;
+}
+
+.fee-line {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-muted);
+}
+
+.btn-withdraw-action {
+  background: var(--accent-amber-gradient);
+  border: none;
+  color: var(--text-dark);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--accent-amber-glow);
+  width: 100%;
+}
+
+.btn-withdraw-action:hover:not(:disabled) {
+  background: linear-gradient(135deg, #ff9533 0%, #ff6600 100%);
+}
+
+/* ===================================================================
+   06. PILOT CAREER DOSSIER MODAL
+   =================================================================== */
 .dossier-section {
   display: flex;
   flex-direction: column;
@@ -1296,9 +2323,9 @@ input:focus-visible {
 }
 
 .dossier-section h3 {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-muted);
@@ -1311,6 +2338,7 @@ input:focus-visible {
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
 }
+
 .dossier-item {
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-dim);
@@ -1321,49 +2349,63 @@ input:focus-visible {
   font-family: var(--font-mono);
   font-size: 11px;
 }
+
 .dossier-item .label {
   color: var(--text-dim);
 }
 
 .dossier-item .value {
   color: var(--text-main);
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .danger-actions {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
-.history-table-wrapper {
-  max-height: 140px;
-  overflow-y: auto;
-  border: 1px solid var(--border-dim);
+.btn-wallet-action-dossier {
+  background-color: rgba(16, 185, 129, 0.12);
+  border: 1px solid var(--status-success);
+  color: var(--status-success);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
+  border-radius: var(--radius-sm);
 }
 
-.personal-history-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-family: var(--font-mono);
-  font-size: 10px;
+.btn-danger {
+  background-color: rgba(239, 68, 68, 0.12);
+  border: 1px solid var(--status-danger);
+  color: var(--status-danger);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
 }
 
-.personal-history-table th {
-  position: sticky;
-  top: 0;
-  background-color: var(--bg-surface-3);
-  color: var(--text-dim);
-  padding: 4px 8px;
-  text-align: left;
+.btn-secondary {
+  background-color: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px;
 }
 
-.personal-history-table td {
-  padding: 4px 8px;
-  border-bottom: 1px solid var(--bg-surface-2);
+.modal-footer {
+  padding: 12px 20px;
+  background-color: var(--bg-surface-2);
+  border-top: 1px solid var(--border-dim);
+  display: flex;
+  justify-content: flex-end;
 }
 
-/* GAME MASTER DRAWER */
+/* ===================================================================
+   07. GAME MASTER DRAWER (ADMIN)
+   =================================================================== */
 .drawer {
   display: none;
   position: fixed;
@@ -1375,14 +2417,15 @@ input:focus-visible {
   border-left: 1px solid var(--border-mid);
   z-index: 200;
   flex-direction: column;
-  box-shadow: -6px 0 18px rgba(0, 0, 0, 0.7);
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.8);
 }
+
 .drawer.active {
   display: flex;
 }
 
 .drawer-header {
-  height: 46px;
+  height: 48px;
   background-color: var(--bg-surface-2);
   border-bottom: 1px solid var(--border-dim);
   display: flex;
@@ -1393,10 +2436,10 @@ input:focus-visible {
 }
 
 .drawer-header h2 {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
+  font-weight: 800;
+  letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--status-warning);
 }
@@ -1405,8 +2448,7 @@ input:focus-visible {
   background: none;
   border: none;
   color: var(--text-dim);
-  font-size: 22px;
-  cursor: pointer;
+  font-size: 20px;
 }
 
 .drawer-content {
@@ -1424,9 +2466,9 @@ input:focus-visible {
 }
 
 .drawer-section h3 {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: var(--text-dim);
@@ -1434,53 +2476,22 @@ input:focus-visible {
   padding-bottom: 4px;
 }
 
-.drawer-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-}
-
+.drawer-grid-2,
 .live-metrics-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
-/* DEGUG LAYER & ONBOARDING */
-#debug-overlay {
-  position: fixed;
-  top: 50px;
-  left: 10px;
-  width: 260px;
-  background-color: rgba(10, 12, 15, 0.92);
-  border: 1px solid var(--status-warning);
-  border-radius: var(--radius-sm);
-  padding: 10px;
-  z-index: 9999;
-  display: none;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  line-height: 1.5;
-  color: var(--status-warning);
-}
-
-#debug-overlay.active {
-  display: block;
-}
-
-.debug-title {
-  font-weight: 700;
-  letter-spacing: 1px;
-  border-bottom: 1px solid var(--status-warning);
-  padding-bottom: 4px;
-  margin-bottom: 6px;
-}
-
+/* ===================================================================
+   08. ONBOARDING & RULES
+   =================================================================== */
 .onboarding-steps {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;
 }
+
 .onboarding-step {
   background-color: var(--bg-surface-2);
   border: 1px solid var(--border-dim);
@@ -1489,26 +2500,25 @@ input:focus-visible {
 }
 
 .onboarding-step h4 {
-  font-family: var(--font-mono);
+  font-family: var(--font-ui);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: var(--accent-amber);
   margin-bottom: 4px;
-  text-transform: uppercase;
 }
 
 .onboarding-step p {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
-/* ============================================================
-   RESPONSIVE
-   ============================================================ */
+/* ===================================================================
+   RESPONSIVE & MOBILE ERGONOMICS (TABLETS & PHONES)
+   =================================================================== */
 
-/* TABLET / NARROW DESKTOP — stack the cockpit into one column */
-@media (max-width: 900px) {
+/* TABLET (<= 960px) */
+@media (max-width: 960px) {
   #screen-game {
     height: auto;
     min-height: 100vh;
@@ -1517,7 +2527,6 @@ input:focus-visible {
 
   .cockpit-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: auto auto;
     height: auto;
     overflow-y: visible;
   }
@@ -1525,12 +2534,12 @@ input:focus-visible {
   .cockpit-controls-panel {
     border-right: none;
     border-bottom: 1px solid var(--border-dim);
-    overflow-y: visible;
+    order: 2;
   }
 
   .flight-arena-panel {
-    height: auto;
-    grid-template-rows: min(60vh, 420px) auto;
+    order: 1;
+    grid-template-rows: min(52vh, 380px) auto;
   }
 
   .flight-floor-dock {
@@ -1540,7 +2549,7 @@ input:focus-visible {
 
   .bets-table-wrapper,
   .feed-list {
-    max-height: 220px;
+    max-height: 180px;
   }
 
   .drawer {
@@ -1548,90 +2557,105 @@ input:focus-visible {
   }
 }
 
-/* PHONE — single-column layout, larger tap targets, smaller HUD type */
+/* MOBILE PHONES (<= 600px) */
 @media (max-width: 600px) {
   html,
   body {
-    font-size: 14px;
+    font-size: 13px;
   }
 
-  /* HEADER: wraps to two rows instead of clipping/overflowing */
+  /* HEADER */
   .game-header {
     height: auto;
+    padding: 6px 10px;
     flex-wrap: wrap;
-    row-gap: 8px;
-    padding: 8px 10px;
+    row-gap: 6px;
   }
 
-  .header-left,
-  .header-right {
-    flex-wrap: wrap;
-    gap: 6px;
+  .header-left {
     width: 100%;
     justify-content: space-between;
   }
 
   .header-right {
-    justify-content: flex-start;
-  }
-
-  .header-right button,
-  .btn-add-cash-header {
-    font-size: 10px;
-    padding: 6px 8px;
+    width: 100%;
+    justify-content: space-between;
   }
 
   .brand-text {
-    font-size: 16px;
+    font-size: 14px;
   }
 
-  .round-info,
-  .state-info {
+  .header-pill-badge {
+    font-size: 9px;
+    padding: 2px 6px;
+  }
+
+  .btn-wallet-header {
+    padding: 3px 8px;
+  }
+
+  .wallet-amt {
+    font-size: 11px;
+  }
+
+  .btn-icon-control {
+    width: 26px;
+    height: 26px;
+  }
+
+  .btn-text-control {
+    font-size: 10px;
     padding: 3px 6px;
   }
 
-  .user-profile-chip {
-    padding: 5px 8px;
-  }
-
-  /* ARENA & HUD: scale numerals down so they never overflow the viewport */
+  /* FLIGHT ARENA VIEWPORT ON MOBILE */
   .flight-arena-panel {
-    grid-template-rows: min(48vh, 320px) auto;
+    grid-template-rows: min(44vh, 280px) auto;
   }
 
   .hud-multiplier {
-    font-size: 56px;
+    font-size: clamp(38px, 12vw, 64px);
   }
 
   .hud-subtitle {
     font-size: 9px;
+    margin-top: 4px;
   }
 
   .countdown-digits {
     font-size: 48px;
   }
 
-  .countdown-title {
-    font-size: 10px;
-  }
-
   .crash-multiplier {
     font-size: 40px;
-  }
-
-  .crash-title {
-    font-size: 12px;
   }
 
   .telemetry-corner {
     font-size: 9px;
   }
 
-  .telemetry-corner.bottom-left {
-    display: none;
+  /* CONTROLS ON MOBILE */
+  .cockpit-controls-panel {
+    padding: 10px;
+    gap: 10px;
   }
 
-  /* SQUADRON BETS + FEED: stack instead of squeezing side by side */
+  .quick-stake-grid {
+    gap: 4px;
+  }
+
+  .btn-chip {
+    padding: 8px 0;
+    font-size: 11px;
+  }
+
+  .btn-action-takeoff {
+    height: 54px;
+    font-size: 16px;
+  }
+
+  /* DOCK ON MOBILE */
   .flight-floor-dock {
     grid-template-columns: 1fr;
     grid-template-rows: auto auto;
@@ -1644,326 +2668,52 @@ input:focus-visible {
 
   .bets-table-wrapper,
   .feed-list {
-    max-height: 160px;
+    max-height: 150px;
   }
 
-  /* CONTROLS PANEL: roomier tap targets for stake/cashout controls */
-  .cockpit-controls-panel {
-    padding: 12px;
-    gap: 12px;
-  }
-
-  .quick-stake-grid {
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-
-  .quick-stake-grid button {
-    padding: 10px 0;
-    font-size: 11px;
-  }
-
-  .btn-step {
-    width: 42px;
-    height: 42px;
-  }
-
-  .btn-action-main {
-    height: 58px;
-    font-size: 17px;
-  }
-
-  /* FOOTER: keyboard hint is meaningless on a touchscreen */
-  .game-footer {
-    flex-wrap: wrap;
-    height: auto;
-    padding: 6px 10px;
-    gap: 4px;
-  }
-
-  .status-right {
-    display: none;
-  }
-
-  /* SCREENS 1–3 (splash / auth / payment): tighten padding & type scale */
-  .splash-brand {
-    font-size: 30px;
-    letter-spacing: 2px;
-  }
-
-  .auth-card,
-  .payment-card {
-    padding: 20px;
-  }
-
-  .auth-header h1,
-  .payment-header h1 {
-    font-size: 22px;
-  }
-
-  .auth-tabs {
-    font-size: 9px;
-  }
-
-  .auth-tab-btn {
-    font-size: 9px;
-    padding: 8px 2px;
-  }
-
-  .deposit-grid,
-  .payment-methods-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .wallet-balance-banner {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-
-  .free-credit-badge {
-    text-align: left;
-  }
-
-  /* MODALS & DRAWER: full-bleed on phones */
+  /* MODALS FULL-BLEED / BOTTOM SHEET ON MOBILE */
   .modal {
     padding: 0;
+    align-items: flex-end;
   }
 
   .modal-box {
     max-width: 100%;
-    height: 100%;
-    max-height: 100%;
-    border-radius: 0;
+    max-height: 94vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
 
   .dossier-grid {
     grid-template-columns: 1fr;
   }
 
-  .avatar-grid {
-    grid-template-columns: repeat(4, 1fr);
+  .payout-type-selector {
+    grid-template-columns: 1fr;
   }
 
-  .drawer-grid-2,
-  .live-metrics-grid {
-    grid-template-columns: 1fr;
+  .form-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .deposit-grid,
+  .payment-methods-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
-/* SMALL PHONE — extra shrink so the HUD never clips */
-@media (max-width: 380px) {
+/* VERY SMALL SCREENS (<= 360px) */
+@media (max-width: 360px) {
   .hud-multiplier {
-    font-size: 44px;
-  }
-
-  .countdown-digits {
-    font-size: 38px;
-  }
-
-  .crash-multiplier {
-    font-size: 32px;
+    font-size: 34px;
   }
 
   .quick-stake-grid {
     grid-template-columns: repeat(4, 1fr);
-    gap: 4px;
   }
 
-  .quick-stake-grid button {
-    font-size: 10px;
-    padding: 8px 0;
+  .btn-chip {
+    font-size: 9px;
+    padding: 6px 0;
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  * {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
-
-/* =======================================================
-   PAYMENT / WALLET DEPOSIT STYLES
-   ======================================================= */
-#screen-payment {
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background-color: var(--bg-core);
-  padding: 24px;
-}
-
-.payment-card {
-  width: 100%;
-  max-width: 520px;
-  background-color: var(--bg-surface-1);
-  border: 1px solid var(--border-mid);
-  border-radius: var(--radius-md);
-  padding: 28px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
-}
-
-.payment-header {
-  text-align: center;
-  border-bottom: 1px solid var(--border-dim);
-  padding-bottom: 14px;
-}
-
-.payment-header h1 {
-  font-family: var(--font-display);
-  font-size: 26px;
-  letter-spacing: 2px;
-  color: var(--text-main);
-  margin-bottom: 4px;
-}
-
-.payment-header p {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-  letter-spacing: 0.5px;
-}
-
-.wallet-balance-banner {
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
-  border-left: 4px solid var(--status-success);
-  padding: 14px 16px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.wallet-banner-info .label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  text-transform: uppercase;
-}
-
-.wallet-banner-info .val {
-  font-family: var(--font-mono);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--status-success);
-  letter-spacing: 1px;
-}
-
-.free-credit-badge {
-  background-color: var(--status-success-dim);
-  border: 1px solid var(--status-success);
-  color: var(--status-success);
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 700;
-  padding: 4px 8px;
-  border-radius: 2px;
-  text-align: right;
-  line-height: 1.3;
-}
-
-.deposit-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.deposit-chip-btn {
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-mid);
-  color: var(--text-main);
-  font-family: var(--font-mono);
-  font-size: 13px;
-  font-weight: 700;
-  padding: 10px 0;
-  text-align: center;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.deposit-chip-btn:hover,
-.deposit-chip-btn.selected {
-  border-color: var(--status-success);
-  background-color: var(--status-success-dim);
-  color: var(--status-success);
-}
-
-.payment-methods-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-}
-
-.payment-method-item {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding: 10px 4px;
-  background-color: var(--bg-surface-2);
-  border: 1px solid var(--border-dim);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--text-muted);
-  transition: all 0.15s ease;
-}
-
-.payment-method-item:hover,
-.payment-method-item.selected {
-  border-color: var(--accent-amber);
-  background-color: var(--accent-amber-dim);
-  color: var(--accent-amber);
-}
-
-.btn-deposit-action {
-  background-color: var(--status-success);
-  border-color: var(--status-success);
-  color: #f4f3ef;
-  font-size: 13px;
-  font-weight: 700;
-  padding: 12px;
-  width: 100%;
-}
-
-.btn-deposit-action:hover:not(:disabled) {
-  background-color: #28a745;
-  border-color: #28a745;
-}
-
-.deposit-status-alert {
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  display: none;
-}
-
-.deposit-status-alert.active {
-  display: block;
-}
-
-.btn-add-cash-header {
-  background-color: var(--status-success-dim);
-  border: 1px solid var(--status-success);
-  color: var(--status-success);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-}
-
-.btn-add-cash-header:hover {
-  background-color: var(--status-success);
-  color: #f4f3ef;
 }
