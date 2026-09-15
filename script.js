@@ -1,8 +1,7 @@
 /**
  * AEROCRASH — TACTICAL HIGH-ALTITUDE FLIGHT SIMULATOR
- * Modernized UI, Live Telemetry, Multiplayer Squadron, Full Bank & UPI Withdrawal System, Firestore Cloud Sync
- * Real-Time IP Detection, Unpredictable Dynamic Physics, Admin User & Withdrawal Management
- * Real-time Synchronized Multi-User Global Gameplay, Real-User Active Bets, Dual/Multiple Betting System
+ * Real-time Synchronized Multi-User Global Gameplay, Real-User Active Bets, Dynamic Multiple Betting System
+ * Auto-Bet, Auto-Cashout, Bank & UPI Payout Persistence, Firestore Cloud Sync
  */
 
 (function () {
@@ -17,19 +16,15 @@
     MIN_STAKE: 10,          // ₹10 minimum
     MAX_STAKE: 8000,        // ₹8,000 maximum
     MIN_WITHDRAWAL: 50,     // ₹50 minimum withdrawal
+    MAX_SIMULTANEOUS_BETS: 4,
     TIMINGS: {
-      SPLASH_MS: 1600,
+      SPLASH_MS: 1400,
       BETTING_MS: 8000,
       LAUNCHING_MS: 1000,
       CRASHED_MS: 1600,
       RESULT_MS: 2000,
     },
   };
-
-  const NOUN_CALLSIGNS = [
-    "ShadowFlyer", "SkyHunter", "AeroMax", "JetStream", "CloudRider", "TurboPilot",
-    "ApexFalcon", "ViperOne", "MachNine", "NightHawk", "Starlight", "Solaris", "Maverick"
-  ];
 
   let clientIP = "Detecting...";
   let clientGeo = {};
@@ -157,21 +152,19 @@
   function soundCrash() { playTone(120, "sawtooth", 0.5, 0.3); }
 
   //===================================================================
-  // ENGINE & GAME STATE VARIABLES
+  // ENGINE & MULTIPLAYER GAME STATE
   //===================================================================
   let gameState = "BETTING"; // "BETTING", "LAUNCHING", "RUNNING", "CRASHED", "RESULT"
   let roundNumber = 2848;
   let liveMultiplier = 1.00;
   let crashMultiplier = 2.50;
-  let roundStartTime = 0;
-  let launchingStartTime = 0;
-  let launchStartTime = 0;
   let currentScreen = "SPLASH";
   let isGamePaused = false;
   let isManualCrashPending = false;
   let fleetCount = 150;
 
-  // DUAL BET SLOTS (MULTIPLE BETS IN ONE)
+  // DYNAMIC MULTIPLE BET SLOTS
+  let activeSlotIds = [1, 2];
   let bets = {
     1: {
       isPlaced: false,
@@ -179,8 +172,9 @@
       isCashedOut: false,
       cashoutMultiplier: 0.0,
       cashoutAmount: 0,
-      autoEnabled: false,
-      autoValue: 2.00
+      autoBet: false,
+      autoCashout: false,
+      autoCashoutVal: 2.00
     },
     2: {
       isPlaced: false,
@@ -188,27 +182,23 @@
       isCashedOut: false,
       cashoutMultiplier: 0.0,
       cashoutAmount: 0,
-      autoEnabled: false,
-      autoValue: 3.00
+      autoBet: false,
+      autoCashout: false,
+      autoCashoutVal: 3.00
     }
   };
-
-  let activeBetSlotTab = 1;
-  let isDualViewMode = false;
 
   let currentAuthMode = "login";
   let userDocUnsubscribe = null;
 
-  // Dynamic Canvas Physics & Flight Trajectory Points
+  // Canvas Physics
   let canvasCtx = null;
   let canvasWidth = 800;
   let canvasHeight = 450;
   let debrisParticles = [];
   let liveTrail = [];
 
-  //====================================================================
-  // DOM ELEMENTS CACHE
-  //====================================================================
+  // DOM Elements Cache
   let DOM = {};
 
   function cacheDOM() {
@@ -249,92 +239,61 @@
       chipName: document.getElementById("profile-chip-name"),
       tickerList: document.getElementById("history-ticker-list"),
 
-      // Left Controls Navigation
+      // Left Navigation & Bet Panels Wrapper
       tabCtrlBetting: document.getElementById("tab-ctrl-betting"),
       tabCtrlHistory: document.getElementById("tab-ctrl-history"),
       controlsBettingView: document.getElementById("controls-betting-view"),
       controlsHistoryView: document.getElementById("controls-history-view"),
-
-      // Dual Bet Slots Tabs & Container
-      tabSlot1: document.getElementById("tab-bet-slot-1"),
-      tabSlot2: document.getElementById("tab-bet-slot-2"),
-      slotDot1: document.getElementById("slot-dot-1"),
-      slotDot2: document.getElementById("slot-dot-2"),
-      btnToggleDual: document.getElementById("btn-toggle-dual-mode"),
       betPanelsWrapper: document.getElementById("bet-panels-wrapper"),
-      betCard1: document.getElementById("bet-card-1"),
-      betCard2: document.getElementById("bet-card-2"),
-      slotSummary1: document.getElementById("slot-summary-1"),
-      slotSummary2: document.getElementById("slot-summary-2"),
-
-      // Slot 1 Controls
-      stakeInput1: document.getElementById("input-stake-1"),
-      btnStakeInc1: document.getElementById("btn-stake-inc-1"),
-      btnStakeDec1: document.getElementById("btn-stake-dec-1"),
-      chips1: document.querySelectorAll("#quick-grid-1 .btn-chip"),
-      autoCheck1: document.getElementById("check-auto-cashout-1"),
-      autoInput1: document.getElementById("input-auto-cashout-1"),
-      btnClearAuto1: document.getElementById("btn-clear-autocashout-1"),
-      btnAction1: document.getElementById("btn-action-1"),
-      actionText1: document.getElementById("action-btn-text-1"),
-      actionSubtext1: document.getElementById("action-btn-subtext-1"),
-
-      // Slot 2 Controls
-      stakeInput2: document.getElementById("input-stake-2"),
-      btnStakeInc2: document.getElementById("btn-stake-inc-2"),
-      btnStakeDec2: document.getElementById("btn-stake-dec-2"),
-      chips2: document.querySelectorAll("#quick-grid-2 .btn-chip"),
-      autoCheck2: document.getElementById("check-auto-cashout-2"),
-      autoInput2: document.getElementById("input-auto-cashout-2"),
-      btnClearAuto2: document.getElementById("btn-clear-autocashout-2"),
-      btnAction2: document.getElementById("btn-action-2"),
-      actionText2: document.getElementById("action-btn-text-2"),
-      actionSubtext2: document.getElementById("action-btn-subtext-2"),
-
+      btnAddBetPanel: document.getElementById("btn-add-bet-panel"),
       actionFeedback: document.getElementById("action-feedback"),
-      cardWalletBottom: document.getElementById("card-wallet-bottom"),
-      userBalanceDisplay: document.getElementById("user-vc-display"),
-      totalStakedDisplay: document.getElementById("stat-total-staked"),
-      totalWinsDisplay: document.getElementById("stat-total-wins"),
-      personalLogsContainer: document.getElementById("personal-logs-container"),
 
-      // Arena & Canvas
-      canvas: document.getElementById("flight-canvas"),
-      countdownOverlay: document.getElementById("countdown-overlay"),
+      // Canvas & Flight Overlays
+      canvas: document.getElementById("canvas-flight-deck"),
+      hudContainer: document.getElementById("hud-multiplier-box"),
+      hudMultiplier: document.getElementById("hud-live-multiplier"),
+      countdownOverlay: document.getElementById("overlay-countdown"),
       countdownDigits: document.getElementById("countdown-digits"),
-      crashOverlay: document.getElementById("crash-overlay"),
-      crashMultiplier: document.getElementById("crash-multiplier"),
-      hudContainer: document.getElementById("hud-multiplier-container"),
-      hudMultiplier: document.getElementById("hud-multiplier"),
+      crashOverlay: document.getElementById("overlay-crashed"),
+      crashMultiplier: document.getElementById("crashed-multiplier-val"),
       playerResultBanner: document.getElementById("player-result-banner"),
-      telemAlt: document.getElementById("telem-alt"),
-      telemVel: document.getElementById("telem-vel"),
-      telemTraj: document.getElementById("telem-traj"),
 
-      // Floor Dock
+      // Telemetry
+      telemAlt: document.getElementById("telem-altitude-val"),
+      telemVel: document.getElementById("telem-speed-val"),
+      telemTraj: document.getElementById("telem-trajectory-val"),
+
+      // Squadron Live Bets Table
       squadronBetsTable: document.getElementById("squadron-bets-table"),
       squadronCountBadge: document.getElementById("squadron-count-badge"),
-      activityFeedList: document.getElementById("activity-feed-list"),
+      activityFeedList: document.getElementById("live-activity-feed"),
       footerLiveClock: document.getElementById("footer-live-clock"),
 
-      // Wallet Modal (Deposit & Withdrawal)
+      // Wallet / Payment
+      cardWalletBottom: document.getElementById("card-wallet-bottom"),
+      userBalanceDisplay: document.getElementById("user-vc-display"),
+      totalStakedDisplay: document.getElementById("dossier-total-staked"),
+      totalWinsDisplay: document.getElementById("dossier-total-wins"),
+      paymentCurrentBalance: document.getElementById("payment-current-balance"),
+      depositInput: document.getElementById("deposit-amount-input"),
+      depositChips: document.querySelectorAll(".deposit-chip-btn"),
+      btnConfirmDeposit: document.getElementById("btn-confirm-deposit"),
+      btnPaymentProceed: document.getElementById("btn-payment-proceed"),
+      depositAlert: document.getElementById("deposit-status-alert"),
+
+      // Wallet Modal
       modalWallet: document.getElementById("modal-wallet"),
-      btnWalletClose: document.getElementById("btn-wallet-close"),
       tabWalletDeposit: document.getElementById("tab-wallet-deposit"),
       tabWalletWithdraw: document.getElementById("tab-wallet-withdraw"),
-      walletPanelDeposit: document.getElementById("wallet-tab-content-deposit"),
-      walletPanelWithdraw: document.getElementById("wallet-tab-content-withdraw"),
+      walletPanelDeposit: document.getElementById("wallet-panel-deposit"),
+      walletPanelWithdraw: document.getElementById("wallet-panel-withdraw"),
+      btnWalletClose: document.getElementById("btn-wallet-close"),
       modalWalletBalanceVal: document.getElementById("modal-wallet-balance-val"),
-      walletStatusAlert: document.getElementById("wallet-status-alert"),
-
-      // Deposit Modal Elements
-      modalDepositChips: document.querySelectorAll("#wallet-tab-content-deposit .deposit-chip-btn"),
-      modalDepositInput: document.getElementById("modal-input-deposit-amount"),
-      modalPaymentMethods: document.querySelectorAll("#wallet-tab-content-deposit .payment-method-item"),
+      modalDepositInput: document.getElementById("modal-deposit-input"),
       depositUtrInput: document.getElementById("deposit-utr-input"),
+      modalDepositChips: document.querySelectorAll("#wallet-panel-deposit .deposit-chip-btn"),
       btnModalDepositConfirm: document.getElementById("btn-modal-deposit-confirm"),
 
-      // Withdrawal Modal Elements
       typeOptBank: document.getElementById("type-opt-bank"),
       typeOptUpi: document.getElementById("type-opt-upi"),
       payoutBankForm: document.getElementById("payout-bank-form"),
@@ -347,17 +306,9 @@
       withdrawUpiName: document.getElementById("withdraw-upi-name"),
       withdrawUpiId: document.getElementById("withdraw-upi-id"),
       withdrawAmountInput: document.getElementById("withdraw-amount-input"),
-      withdrawPercentChips: document.querySelectorAll(".withdraw-quick-percents .btn-percent-chip"),
+      withdrawPercentChips: document.querySelectorAll(".btn-percent-chip"),
       btnSubmitWithdrawal: document.getElementById("btn-submit-withdrawal"),
-
-      // Onboarding Payment Screen
-      paymentCurrentBalance: document.getElementById("payment-current-balance"),
-      depositAlert: document.getElementById("deposit-status-alert"),
-      depositChips: document.querySelectorAll("#screen-payment .deposit-chip-btn"),
-      depositInput: document.getElementById("input-deposit-amount"),
-      paymentMethodItems: document.querySelectorAll("#screen-payment .payment-method-item"),
-      btnConfirmDeposit: document.getElementById("btn-confirm-deposit"),
-      btnPaymentProceed: document.getElementById("btn-payment-proceed"),
+      walletStatusAlert: document.getElementById("modal-wallet-status-alert"),
 
       // Dossier Modal
       modalProfile: document.getElementById("modal-profile"),
@@ -376,6 +327,7 @@
       dossierWinRate: document.getElementById("dossier-win-rate"),
       dossierHighestMulti: document.getElementById("dossier-highest-multi"),
       dossierBestPayout: document.getElementById("dossier-best-payout"),
+      personalLogsContainer: document.getElementById("personal-history-logs"),
 
       // Game Master Drawer
       drawerGM: document.getElementById("drawer-game-master"),
@@ -585,10 +537,11 @@
 
       const pilotId = "#" + (8400 + (index % 100));
       const displayName = b.callsign || (b.email ? b.email.split("@")[0].toUpperCase() : "PILOT");
+      const slotBadge = b.slot ? " (B" + b.slot + ")" : "";
 
       html += '<tr class="' + statusClass + '">' +
         '<td>' + pilotId + '</td>' +
-        '<td style="font-weight:700; color:' + (displayName === savedState.callsign ? 'var(--accent-orange)' : 'var(--text-main)') + ';">' + displayName + '</td>' +
+        '<td style="font-weight:700; color:' + (displayName === savedState.callsign ? 'var(--accent-orange)' : 'var(--text-main)') + ';">' + displayName + slotBadge + '</td>' +
         '<td>' + formatRupees(b.stake) + '</td>' +
         '<td>' + cashoutText + '</td>' +
         '<td>' + multiText + '</td>' +
@@ -608,6 +561,7 @@
   const localSessionId = "pilot_" + Math.random().toString(36).substring(2, 9);
   let isGlobalSyncActive = false;
   let globalRoundUnsubscribe = null;
+  let hasReceivedFirstSnapshot = false;
 
   let sharedRound = {
     roundNumber: 2848,
@@ -625,7 +579,8 @@
   function isLocalMaster() {
     if (savedState.userRole === "admin") return true;
     if (sharedRound.masterId === localSessionId) return true;
-    if (Date.now() - (sharedRound.updatedAt || 0) > 12000) return true;
+    const timeSinceUpdate = Date.now() - (sharedRound.updatedAt || 0);
+    if (timeSinceUpdate > 6000) return true;
     return false;
   }
 
@@ -639,14 +594,16 @@
     globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
       if (!doc.exists) {
         sharedRound.bettingStartTime = Date.now();
+        sharedRound.masterId = localSessionId;
         publishSharedRoundState();
+        hasReceivedFirstSnapshot = true;
         return;
       }
 
       const data = doc.data();
-      const oldRound = sharedRound.roundNumber;
-      const oldState = sharedRound.state;
+      hasReceivedFirstSnapshot = true;
 
+      const oldRound = sharedRound.roundNumber;
       sharedRound = Object.assign(sharedRound, data);
 
       if (sharedRound.roundNumber !== oldRound) {
@@ -678,28 +635,259 @@
   }
 
   //====================================================================
-  // DUAL BETTING CONTROLLER (SLOT 1 & SLOT 2)
+  // DYNAMIC MULTI-BETTING CARDS MANAGER (ADD / REMOVE / AUTOBET)
   //====================================================================
-  function getStakeForSlot(slot) {
-    const input = slot === 2 ? DOM.stakeInput2 : DOM.stakeInput1;
-    let val = parseFloat(input ? input.value : 10) || 10;
-    return Math.max(CONFIG.MIN_STAKE, Math.min(CONFIG.MAX_STAKE, val));
+  function renderDynamicBetPanels() {
+    if (!DOM.betPanelsWrapper) return;
+    DOM.betPanelsWrapper.innerHTML = "";
+
+    activeSlotIds.forEach(function (slotId) {
+      if (!bets[slotId]) {
+        bets[slotId] = {
+          isPlaced: false,
+          stake: 10,
+          isCashedOut: false,
+          cashoutMultiplier: 0.0,
+          cashoutAmount: 0,
+          autoBet: false,
+          autoCashout: false,
+          autoCashoutVal: (1.5 + slotId * 0.5)
+        };
+      }
+
+      const b = bets[slotId];
+      const card = document.createElement("div");
+      card.className = "single-bet-card active";
+      card.id = "bet-card-" + slotId;
+      card.setAttribute("data-slot", slotId);
+
+      const canRemove = activeSlotIds.length > 1;
+      const removeBtnHtml = canRemove 
+        ? '<button type="button" class="btn-remove-bet-card" data-slot="' + slotId + '" title="Remove this bet panel">&times;</button>'
+        : '';
+
+      card.innerHTML = `
+        <div class="card-slot-header">
+          <div class="slot-badge-group">
+            <span class="slot-dot ${b.isPlaced ? 'active' : ''}" id="slot-dot-${slotId}"></span>
+            <span class="slot-title">BET 0${slotId}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span class="slot-stake-summary" id="slot-summary-${slotId}">₹${b.stake.toFixed(2)}</span>
+            ${removeBtnHtml}
+          </div>
+        </div>
+
+        <div class="control-box stake-section">
+          <label for="input-stake-${slotId}">STAKE AMOUNT (₹)</label>
+          <div class="stake-stepper-card">
+            <span class="currency-symbol">₹</span>
+            <input type="number" id="input-stake-${slotId}" value="${b.stake.toFixed(2)}" min="10" max="8000" step="10">
+            <div class="stepper-arrows">
+              <button type="button" class="btn-arrow-step btn-step-inc" data-slot="${slotId}">▲</button>
+              <button type="button" class="btn-arrow-step btn-step-dec" data-slot="${slotId}">▼</button>
+            </div>
+          </div>
+
+          <div class="quick-stake-grid" id="quick-grid-${slotId}">
+            <button type="button" class="btn-chip ${b.stake === 10 ? 'active' : ''}" data-slot="${slotId}" data-val="10">10</button>
+            <button type="button" class="btn-chip ${b.stake === 25 ? 'active' : ''}" data-slot="${slotId}" data-val="25">25</button>
+            <button type="button" class="btn-chip ${b.stake === 50 ? 'active' : ''}" data-slot="${slotId}" data-val="50">50</button>
+            <button type="button" class="btn-chip ${b.stake === 100 ? 'active' : ''}" data-slot="${slotId}" data-val="100">100</button>
+            <button type="button" class="btn-chip ${b.stake === 200 ? 'active' : ''}" data-slot="${slotId}" data-val="200">200</button>
+            <button type="button" class="btn-chip ${b.stake === 500 ? 'active' : ''}" data-slot="${slotId}" data-val="500">500</button>
+            <button type="button" class="btn-chip ${b.stake === 1000 ? 'active' : ''}" data-slot="${slotId}" data-val="1000">1K</button>
+            <button type="button" class="btn-chip ${b.stake === 5000 ? 'active' : ''}" data-slot="${slotId}" data-val="5000">5K</button>
+          </div>
+        </div>
+
+        <div class="automation-dual-grid">
+          <div class="auto-toggle-box">
+            <div class="auto-header-row">
+              <span class="auto-label">AUTO BET</span>
+              <label class="switch-toggle">
+                <input type="checkbox" id="check-auto-bet-${slotId}" ${b.autoBet ? 'checked' : ''}>
+                <span class="slider round"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="auto-toggle-box">
+            <div class="auto-header-row">
+              <span class="auto-label">AUTO CASHOUT</span>
+              <label class="switch-toggle">
+                <input type="checkbox" id="check-auto-cashout-${slotId}" ${b.autoCashout ? 'checked' : ''}>
+                <span class="slider round"></span>
+              </label>
+            </div>
+            <div class="auto-input-card">
+              <input type="number" id="input-auto-cashout-${slotId}" value="${b.autoCashoutVal.toFixed(2)}" min="1.05" max="30.00" step="0.05">
+              <span class="multi-suffix">x</span>
+              <button type="button" class="btn-clear-input btn-clear-auto" data-slot="${slotId}">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="action-section">
+          <button type="button" id="btn-action-${slotId}" class="btn-action-takeoff state-bet" data-slot="${slotId}">
+            <svg class="action-plane-icon" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/>
+            </svg>
+            <div class="action-btn-content">
+              <span id="action-btn-text-${slotId}">TAKEOFF (BET ${slotId})</span>
+              <span id="action-btn-subtext-${slotId}" class="btn-subtext">Stake: ₹${b.stake.toFixed(2)}</span>
+            </div>
+          </button>
+        </div>
+      `;
+
+      DOM.betPanelsWrapper.appendChild(card);
+    });
+
+    attachDynamicCardListeners();
+    updateActionButtons();
+  }
+
+  function attachDynamicCardListeners() {
+    activeSlotIds.forEach(function (slotId) {
+      const b = bets[slotId];
+      const stakeInput = document.getElementById("input-stake-" + slotId);
+      const autoBetCheck = document.getElementById("check-auto-bet-" + slotId);
+      const autoCashCheck = document.getElementById("check-auto-cashout-" + slotId);
+      const autoCashInput = document.getElementById("input-auto-cashout-" + slotId);
+      const actionBtn = document.getElementById("btn-action-" + slotId);
+
+      if (stakeInput) {
+        stakeInput.addEventListener("input", function () {
+          b.stake = Math.max(CONFIG.MIN_STAKE, Math.min(CONFIG.MAX_STAKE, parseFloat(stakeInput.value) || 10));
+          const summary = document.getElementById("slot-summary-" + slotId);
+          if (summary) summary.textContent = formatRupees(b.stake);
+          updateActionButtons();
+        });
+      }
+
+      if (autoBetCheck) {
+        autoBetCheck.addEventListener("change", function () {
+          b.autoBet = autoBetCheck.checked;
+          if (b.autoBet && gameState === "BETTING" && !b.isPlaced) {
+            placeBet(slotId);
+          }
+        });
+      }
+
+      if (autoCashCheck) {
+        autoCashCheck.addEventListener("change", function () {
+          b.autoCashout = autoCashCheck.checked;
+        });
+      }
+
+      if (autoCashInput) {
+        autoCashInput.addEventListener("input", function () {
+          b.autoCashoutVal = Math.max(1.05, Math.min(30.00, parseFloat(autoCashInput.value) || 2.0));
+        });
+      }
+
+      if (actionBtn) {
+        actionBtn.addEventListener("click", function () {
+          handleActionClickForSlot(slotId);
+        });
+      }
+    });
+
+    // Chips
+    document.querySelectorAll(".quick-stake-grid .btn-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        const slotId = parseInt(chip.getAttribute("data-slot"), 10);
+        const val = parseFloat(chip.getAttribute("data-val")) || 10;
+        if (bets[slotId]) {
+          bets[slotId].stake = val;
+          const inp = document.getElementById("input-stake-" + slotId);
+          if (inp) inp.value = val.toFixed(2);
+          const parentGrid = document.getElementById("quick-grid-" + slotId);
+          if (parentGrid) {
+            parentGrid.querySelectorAll(".btn-chip").forEach(function (c) { c.classList.remove("active"); });
+            chip.classList.add("active");
+          }
+          const summary = document.getElementById("slot-summary-" + slotId);
+          if (summary) summary.textContent = formatRupees(val);
+          updateActionButtons();
+        }
+      });
+    });
+
+    // Steppers
+    document.querySelectorAll(".btn-step-inc").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const slotId = parseInt(btn.getAttribute("data-slot"), 10);
+        if (bets[slotId]) {
+          bets[slotId].stake = Math.min(CONFIG.MAX_STAKE, bets[slotId].stake + 10);
+          const inp = document.getElementById("input-stake-" + slotId);
+          if (inp) inp.value = bets[slotId].stake.toFixed(2);
+          const summary = document.getElementById("slot-summary-" + slotId);
+          if (summary) summary.textContent = formatRupees(bets[slotId].stake);
+          updateActionButtons();
+        }
+      });
+    });
+
+    document.querySelectorAll(".btn-step-dec").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const slotId = parseInt(btn.getAttribute("data-slot"), 10);
+        if (bets[slotId]) {
+          bets[slotId].stake = Math.max(CONFIG.MIN_STAKE, bets[slotId].stake - 10);
+          const inp = document.getElementById("input-stake-" + slotId);
+          if (inp) inp.value = bets[slotId].stake.toFixed(2);
+          const summary = document.getElementById("slot-summary-" + slotId);
+          if (summary) summary.textContent = formatRupees(bets[slotId].stake);
+          updateActionButtons();
+        }
+      });
+    });
+
+    // Remove buttons
+    document.querySelectorAll(".btn-remove-bet-card").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const slotId = parseInt(btn.getAttribute("data-slot"), 10);
+        if (activeSlotIds.length > 1) {
+          if (bets[slotId] && bets[slotId].isPlaced && gameState === "BETTING") {
+            cancelBet(slotId);
+          }
+          activeSlotIds = activeSlotIds.filter(function (id) { return id !== slotId; });
+          delete bets[slotId];
+          renderDynamicBetPanels();
+        }
+      });
+    });
+
+    // Clear auto
+    document.querySelectorAll(".btn-clear-auto").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const slotId = parseInt(btn.getAttribute("data-slot"), 10);
+        if (bets[slotId]) {
+          bets[slotId].autoCashoutVal = 2.00;
+          const inp = document.getElementById("input-auto-cashout-" + slotId);
+          if (inp) inp.value = "2.00";
+        }
+      });
+    });
   }
 
   function updateActionButtons() {
-    [1, 2].forEach(function (slot) {
-      const b = bets[slot];
-      const btn = slot === 2 ? DOM.btnAction2 : DOM.btnAction1;
-      const text = slot === 2 ? DOM.actionText2 : DOM.actionText1;
-      const sub = slot === 2 ? DOM.actionSubtext2 : DOM.actionSubtext1;
-      const summary = slot === 2 ? DOM.slotSummary2 : DOM.slotSummary1;
-      const dot = slot === 2 ? DOM.slotDot2 : DOM.slotDot1;
+    activeSlotIds.forEach(function (slotId) {
+      const b = bets[slotId];
+      if (!b) return;
+
+      const btn = document.getElementById("btn-action-" + slotId);
+      const text = document.getElementById("action-btn-text-" + slotId);
+      const sub = document.getElementById("action-btn-subtext-" + slotId);
+      const summary = document.getElementById("slot-summary-" + slotId);
+      const dot = document.getElementById("slot-dot-" + slotId);
 
       if (!btn) return;
       btn.className = "btn-action-takeoff";
       btn.disabled = false;
 
-      if (summary) summary.textContent = formatRupees(getStakeForSlot(slot));
+      if (summary) summary.textContent = formatRupees(b.stake);
       if (dot) {
         if (b.isPlaced) {
           dot.style.background = "var(--status-success)";
@@ -713,51 +901,53 @@
       if (gameState === "BETTING" || gameState === "WAITING") {
         if (b.isPlaced) {
           btn.classList.add("state-cancel");
-          text.textContent = "CANCEL (BET " + slot + ")";
+          if (text) text.textContent = "CANCEL (BET " + slotId + ")";
           if (sub) sub.textContent = "Staked: " + formatRupees(b.stake);
         } else {
           btn.classList.add("state-bet");
-          text.textContent = "TAKEOFF (BET " + slot + ")";
-          if (sub) sub.textContent = "Stake: " + formatRupees(getStakeForSlot(slot));
+          if (text) text.textContent = "TAKEOFF (BET " + slotId + ")";
+          if (sub) sub.textContent = "Stake: " + formatRupees(b.stake);
         }
       } else if (gameState === "LAUNCHING") {
         if (b.isPlaced) {
           btn.classList.add("state-cashout");
-          text.textContent = "AIRBORNE SOON";
+          if (text) text.textContent = "AIRBORNE SOON";
           if (sub) sub.textContent = "Engines Spooling...";
           btn.disabled = true;
         } else {
           btn.disabled = true;
-          text.textContent = "TAKEOFF (BET " + slot + ")";
+          if (text) text.textContent = "TAKEOFF (BET " + slotId + ")";
           if (sub) sub.textContent = "Doors Closed";
         }
       } else if (gameState === "RUNNING") {
         if (b.isPlaced && !b.isCashedOut) {
           const currentPayout = Math.floor(b.stake * liveMultiplier * 100) / 100;
           btn.classList.add("state-cashout");
-          text.textContent = "CASH OUT " + liveMultiplier.toFixed(2) + "x (B" + slot + ")";
+          if (text) text.textContent = "CASH OUT " + liveMultiplier.toFixed(2) + "x (B" + slotId + ")";
           if (sub) sub.textContent = "Payout: " + formatRupees(currentPayout);
         } else if (b.isCashedOut) {
           btn.disabled = true;
           btn.classList.add("state-cashout");
-          text.textContent = "CASHED OUT (B" + slot + ")";
+          if (text) text.textContent = "CASHED OUT (B" + slotId + ")";
           if (sub) sub.textContent = "Won: +" + formatRupees(b.cashoutAmount - b.stake);
         } else {
           btn.disabled = true;
-          text.textContent = "IN FLIGHT";
+          if (text) text.textContent = "IN FLIGHT";
           if (sub) sub.textContent = "Waiting for next round...";
         }
       } else {
         btn.disabled = true;
-        text.textContent = "ROUND SETTLED";
+        if (text) text.textContent = "ROUND SETTLED";
         if (sub) sub.textContent = gameState === "CRASHED" ? "Flight crashed" : "Preparing round...";
       }
     });
   }
 
-  function placeBet(slot) {
-    const stake = getStakeForSlot(slot);
-    if (savedState.virtualBalance < stake) {
+  function placeBet(slotId) {
+    const b = bets[slotId];
+    if (!b) return;
+
+    if (savedState.virtualBalance < b.stake) {
       showActionFeedback("INSUFFICIENT BALANCE // ADD FUNDS", "danger");
       openWalletModal("deposit");
       return;
@@ -768,33 +958,31 @@
       return;
     }
 
-    savedState.virtualBalance -= stake;
+    savedState.virtualBalance -= b.stake;
     saveState();
     updatePlayerUIBalance();
 
-    const b = bets[slot];
     b.isPlaced = true;
-    b.stake = stake;
     b.isCashedOut = false;
     b.cashoutMultiplier = 0.0;
     b.cashoutAmount = 0;
 
-    showActionFeedback("BET " + slot + " PLACED // " + formatRupees(stake), "success");
-    addFeedItem(savedState.callsign + " staked " + formatRupees(stake) + " (Bet " + slot + ")", "bet");
+    showActionFeedback("BET " + slotId + " PLACED // " + formatRupees(b.stake), "success");
+    addFeedItem(savedState.callsign + " staked " + formatRupees(b.stake) + " (Bet " + slotId + ")", "bet");
 
     if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
       const userKey = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser)
         ? window.AERO_FIREBASE.auth.currentUser.uid
         : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : "pilot_user");
       
-      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slotId;
       window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).set({
         round: roundNumber,
         uid: userKey,
-        slot: slot,
+        slot: slotId,
         callsign: savedState.callsign || "PILOT",
         email: savedState.userEmail || "",
-        stake: stake,
+        stake: b.stake,
         hasCashedOut: false,
         status: "PLACED",
         placedAt: new Date()
@@ -808,23 +996,23 @@
     updateActionButtons();
   }
 
-  function cancelBet(slot) {
-    const b = bets[slot];
-    if (!b.isPlaced || gameState !== "BETTING") return;
+  function cancelBet(slotId) {
+    const b = bets[slotId];
+    if (!b || !b.isPlaced || gameState !== "BETTING") return;
 
     savedState.virtualBalance += b.stake;
     saveState();
     updatePlayerUIBalance();
 
     b.isPlaced = false;
-    showActionFeedback("BET " + slot + " CANCELLED // REFUNDED " + formatRupees(b.stake), "info");
+    showActionFeedback("BET " + slotId + " CANCELLED // REFUNDED " + formatRupees(b.stake), "info");
 
     if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
       const userKey = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser)
         ? window.AERO_FIREBASE.auth.currentUser.uid
         : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : "pilot_user");
       
-      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slotId;
       window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).delete().catch(function () {});
 
       window.AERO_FIREBASE.db.collection("users").doc(userKey).set({
@@ -835,9 +1023,9 @@
     updateActionButtons();
   }
 
-  function cashOut(slot) {
-    const b = bets[slot];
-    if (!b.isPlaced || b.isCashedOut || gameState !== "RUNNING") return;
+  function cashOut(slotId) {
+    const b = bets[slotId];
+    if (!b || !b.isPlaced || b.isCashedOut || gameState !== "RUNNING") return;
 
     soundCashout();
     b.isCashedOut = true;
@@ -858,7 +1046,7 @@
 
     savedState.history.unshift({
       round: roundNumber,
-      slot: slot,
+      slot: slotId,
       stake: b.stake,
       multiplier: b.cashoutMultiplier,
       profit: profit,
@@ -871,14 +1059,14 @@
     updateCareerTables();
     renderPersonalHistoryLogs();
 
-    showActionFeedback("CASHOUT (BET " + slot + ") // +" + formatRupees(profit) + " (" + b.cashoutMultiplier.toFixed(2) + "x)", "success");
+    showActionFeedback("CASHOUT (BET " + slotId + ") // +" + formatRupees(profit) + " (" + b.cashoutMultiplier.toFixed(2) + "x)", "success");
 
     if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
       const userKey = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser)
         ? window.AERO_FIREBASE.auth.currentUser.uid
         : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : "pilot_user");
       
-      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slotId;
       window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).update({
         hasCashedOut: true,
         targetMulti: b.cashoutMultiplier,
@@ -893,36 +1081,23 @@
     }
 
     if (DOM.playerResultBanner) {
-      DOM.playerResultBanner.textContent = "BET " + slot + " CASHOUT " + formatRupees(b.cashoutAmount) + " (" + b.cashoutMultiplier.toFixed(2) + "x)";
+      DOM.playerResultBanner.textContent = "BET " + slotId + " CASHOUT " + formatRupees(b.cashoutAmount) + " (" + b.cashoutMultiplier.toFixed(2) + "x)";
       DOM.playerResultBanner.classList.add("active");
     }
 
-    addFeedItem(savedState.callsign + " CASHOUT (B" + slot + ") @" + b.cashoutMultiplier.toFixed(2) + "x (+" + formatRupees(b.cashoutAmount) + ")", "cashout");
+    addFeedItem(savedState.callsign + " CASHOUT (B" + slotId + ") @" + b.cashoutMultiplier.toFixed(2) + "x (+" + formatRupees(b.cashoutAmount) + ")", "cashout");
     updateActionButtons();
   }
 
-  function handleActionClickForSlot(slot) {
+  function handleActionClickForSlot(slotId) {
     initAudio();
     if (gameState === "BETTING" || gameState === "WAITING") {
-      if (bets[slot].isPlaced) cancelBet(slot);
-      else placeBet(slot);
+      if (bets[slotId] && bets[slotId].isPlaced) cancelBet(slotId);
+      else placeBet(slotId);
     } else if (gameState === "RUNNING") {
-      if (bets[slot].isPlaced && !bets[slot].isCashedOut) cashOut(slot);
+      if (bets[slotId] && bets[slotId].isPlaced && !bets[slotId].isCashedOut) cashOut(slotId);
     }
   }
-
-  window.addEventListener("keydown", function (e) {
-    if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
-      e.preventDefault();
-      if (gameState === "RUNNING") {
-        if (bets[1].isPlaced && !bets[1].isCashedOut) cashOut(1);
-        else if (bets[2].isPlaced && !bets[2].isCashedOut) cashOut(2);
-      } else if (gameState === "BETTING") {
-        if (!bets[1].isPlaced) handleActionClickForSlot(1);
-        else if (!bets[2].isPlaced) handleActionClickForSlot(2);
-      }
-    }
-  });
 
   //====================================================================
   // STATE MACHINE & TRANSITIONS
@@ -940,12 +1115,14 @@
         if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
         if (DOM.statePill) DOM.statePill.textContent = "BETTING OPEN";
 
-        // Reset both bets for the new round
-        [1, 2].forEach(function (slot) {
-          bets[slot].isPlaced = false;
-          bets[slot].isCashedOut = false;
-          bets[slot].cashoutMultiplier = 0.0;
-          bets[slot].cashoutAmount = 0;
+        // Reset all active bet slots for the new round
+        activeSlotIds.forEach(function (slotId) {
+          if (bets[slotId]) {
+            bets[slotId].isPlaced = false;
+            bets[slotId].isCashedOut = false;
+            bets[slotId].cashoutMultiplier = 0.0;
+            bets[slotId].cashoutAmount = 0;
+          }
         });
 
         liveMultiplier = 1.00;
@@ -960,13 +1137,12 @@
 
         addFeedItem("ROUND #" + roundNumber + " BETS OPEN // TAKEOFF IN 8s");
 
-        // Trigger Auto Bet if enabled for Slot 1 and Slot 2
-        if (DOM.autoBetCheck1 && DOM.autoBetCheck1.checked && !bets[1].isPlaced) {
-          placeBet(1);
-        }
-        if (DOM.autoBetCheck2 && DOM.autoBetCheck2.checked && !bets[2].isPlaced) {
-          placeBet(2);
-        }
+        // Trigger Auto-Bet for all slots configured
+        activeSlotIds.forEach(function (slotId) {
+          if (bets[slotId] && bets[slotId].autoBet && !bets[slotId].isPlaced) {
+            placeBet(slotId);
+          }
+        });
 
         updateActionButtons();
         break;
@@ -998,25 +1174,25 @@
         if (DOM.crashMultiplier) DOM.crashMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
         if (DOM.statePill) DOM.statePill.textContent = "FLEW AWAY";
 
-        // Settle uncashed bets for both slots
-        [1, 2].forEach(function (slot) {
-          const b = bets[slot];
-          if (b.isPlaced && !b.isCashedOut) {
+        // Settle uncashed bets for all active slots
+        activeSlotIds.forEach(function (slotId) {
+          const b = bets[slotId];
+          if (b && b.isPlaced && !b.isCashedOut) {
             savedState.career.roundsPlayed++;
             savedState.career.roundsLost++;
             savedState.career.totalVcLost += b.stake;
             savedState.history.unshift({
               round: roundNumber,
-              slot: slot,
+              slot: slotId,
               stake: b.stake,
               multiplier: 0,
               profit: -b.stake,
               status: "LOSS",
               time: new Date().toLocaleTimeString()
             });
-            showActionFeedback("BET " + slot + " FLEW AWAY — Lost " + formatRupees(b.stake), "danger");
+            showActionFeedback("BET " + slotId + " FLEW AWAY — Lost " + formatRupees(b.stake), "danger");
           }
-          b.isPlaced = false;
+          if (b) b.isPlaced = false;
         });
 
         saveState();
@@ -1031,7 +1207,6 @@
     }
   }
 
-  // Alias transitionTo
   function transitionTo(newState) {
     applyStateTransition(newState, false);
   }
@@ -1046,6 +1221,7 @@
     }
 
     const nowEpoch = Date.now();
+    const isMaster = isLocalMaster();
 
     if (gameState === "BETTING") {
       const bStart = sharedRound.bettingStartTime || nowEpoch;
@@ -1056,23 +1232,19 @@
       if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
       if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
 
-      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
-        if (isLocalMaster()) {
-          sharedRound.state = "LAUNCHING";
-          sharedRound.launchingStartTime = nowEpoch;
-          publishSharedRoundState();
-        }
+      if (elapsed >= CONFIG.TIMINGS.BETTING_MS && isMaster) {
+        sharedRound.state = "LAUNCHING";
+        sharedRound.launchingStartTime = nowEpoch;
+        publishSharedRoundState();
         applyStateTransition("LAUNCHING");
       }
     } else if (gameState === "LAUNCHING") {
       const lStart = sharedRound.launchingStartTime || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - lStart);
-      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
-        if (isLocalMaster()) {
-          sharedRound.state = "RUNNING";
-          sharedRound.launchStartTime = nowEpoch;
-          publishSharedRoundState();
-        }
+      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS && isMaster) {
+        sharedRound.state = "RUNNING";
+        sharedRound.launchStartTime = nowEpoch;
+        publishSharedRoundState();
         applyStateTransition("RUNNING");
       }
     } else if (gameState === "RUNNING") {
@@ -1088,26 +1260,23 @@
       if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
       if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
 
-      // Auto cashout checks for both Bet 1 and Bet 2
-      if (DOM.autoCheck1 && DOM.autoCheck1.checked && bets[1].isPlaced && !bets[1].isCashedOut) {
-        const target1 = parseFloat(DOM.autoInput1 ? DOM.autoInput1.value : 2.0) || 2.0;
-        if (target1 > 1.0 && liveMultiplier >= target1) cashOut(1);
-      }
-
-      if (DOM.autoCheck2 && DOM.autoCheck2.checked && bets[2].isPlaced && !bets[2].isCashedOut) {
-        const target2 = parseFloat(DOM.autoInput2 ? DOM.autoInput2.value : 3.0) || 3.0;
-        if (target2 > 1.0 && liveMultiplier >= target2) cashOut(2);
-      }
-
-      // Crash trigger
-      if (isManualCrashPending || liveMultiplier >= crashMultiplier) {
-        isManualCrashPending = false;
-        if (isLocalMaster()) {
-          sharedRound.state = "CRASHED";
-          sharedRound.crashedAt = nowEpoch;
-          sharedRound.crashMultiplier = liveMultiplier;
-          publishSharedRoundState();
+      // Auto Cashout checks for all active slots
+      activeSlotIds.forEach(function (slotId) {
+        const b = bets[slotId];
+        if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
+          if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
+            cashOut(slotId);
+          }
         }
+      });
+
+      // Crash trigger evaluated by Master Authority
+      if ((isManualCrashPending || liveMultiplier >= crashMultiplier) && isMaster) {
+        isManualCrashPending = false;
+        sharedRound.state = "CRASHED";
+        sharedRound.crashedAt = nowEpoch;
+        sharedRound.crashMultiplier = liveMultiplier;
+        publishSharedRoundState();
         applyStateTransition("CRASHED");
       }
 
@@ -1115,25 +1284,21 @@
     } else if (gameState === "CRASHED") {
       const cStart = sharedRound.crashedAt || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - cStart);
-      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
-        if (isLocalMaster()) {
-          sharedRound.state = "RESULT";
-          sharedRound.resultStartTime = nowEpoch;
-          publishSharedRoundState();
-        }
+      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS && isMaster) {
+        sharedRound.state = "RESULT";
+        sharedRound.resultStartTime = nowEpoch;
+        publishSharedRoundState();
         applyStateTransition("RESULT");
       }
     } else if (gameState === "RESULT") {
       const rStart = sharedRound.resultStartTime || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - rStart);
-      if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
-        if (isLocalMaster()) {
-          sharedRound.roundNumber = (sharedRound.roundNumber || roundNumber) + 1;
-          sharedRound.crashMultiplier = generateCrashPoint();
-          sharedRound.state = "BETTING";
-          sharedRound.bettingStartTime = nowEpoch;
-          publishSharedRoundState();
-        }
+      if (elapsed >= CONFIG.TIMINGS.RESULT_MS && isMaster) {
+        sharedRound.roundNumber = (sharedRound.roundNumber || roundNumber) + 1;
+        sharedRound.crashMultiplier = generateCrashPoint();
+        sharedRound.state = "BETTING";
+        sharedRound.bettingStartTime = nowEpoch;
+        publishSharedRoundState();
         applyStateTransition("BETTING");
       }
     }
@@ -1351,75 +1516,7 @@
   }
 
   //====================================================================
-  // MAIN ANIMATION & SIMULATION LOOP
-  //====================================================================
-  function gameLoop(timestamp) {
-    if (isGamePaused) {
-      requestAnimationFrame(gameLoop);
-      return;
-    }
-
-    const now = performance.now();
-
-    if (gameState === "BETTING") {
-      if (!roundStartTime || isNaN(roundStartTime)) roundStartTime = now;
-      const elapsed = Math.max(0, now - roundStartTime);
-      const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
-      const secondsLeft = Math.ceil(remaining / 1000);
-
-      if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
-      if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
-
-      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
-        transitionTo("LAUNCHING");
-      }
-    } else if (gameState === "LAUNCHING") {
-      if (!launchingStartTime || isNaN(launchingStartTime)) launchingStartTime = now;
-      const elapsed = Math.max(0, now - launchingStartTime);
-      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
-        transitionTo("RUNNING");
-      }
-    } else if (gameState === "RUNNING") {
-      if (!launchStartTime || isNaN(launchStartTime) || launchStartTime > now) {
-        launchStartTime = now;
-      }
-      const elapsedSec = Math.max(0, (now - launchStartTime) / 1000);
-      liveMultiplier = calculateMultiplier(elapsedSec);
-
-      if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
-      if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
-      if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
-
-      if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
-      if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
-      if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
-
-      // Auto cashout checks for both Bet 1 and Bet 2
-      if (DOM.autoCheck1 && DOM.autoCheck1.checked && bets[1].isPlaced && !bets[1].isCashedOut) {
-        const target1 = parseFloat(DOM.autoInput1 ? DOM.autoInput1.value : 2.0) || 2.0;
-        if (target1 > 1.0 && liveMultiplier >= target1) cashOut(1);
-      }
-
-      if (DOM.autoCheck2 && DOM.autoCheck2.checked && bets[2].isPlaced && !bets[2].isCashedOut) {
-        const target2 = parseFloat(DOM.autoInput2 ? DOM.autoInput2.value : 3.0) || 3.0;
-        if (target2 > 1.0 && liveMultiplier >= target2) cashOut(2);
-      }
-
-      // Crash trigger
-      if (isManualCrashPending || liveMultiplier >= crashMultiplier) {
-        isManualCrashPending = false;
-        transitionTo("CRASHED");
-      }
-
-      updateActionButtons();
-    }
-
-    renderCanvas();
-    requestAnimationFrame(gameLoop);
-  }
-
-  //====================================================================
-  // WALLET & WITHDRAWAL CONTROLLER (WITH FIRESTORE & IP TRACKING)
+  // WALLET & WITHDRAWAL CONTROLLER (WITH FIRESTORE & BANK PERSISTENCE)
   //====================================================================
   function populateSavedBankDetails() {
     if (savedState.bankDetails) {
@@ -1517,7 +1614,6 @@
       openWalletModal("deposit");
     });
 
-    // Auto-save bank & UPI details on input changes
     const bankInputs = [DOM.withdrawBankName, DOM.withdrawAccountHolder, DOM.withdrawAccountNumber, DOM.withdrawAccountNumberConfirm, DOM.withdrawIfscCode, DOM.withdrawUpiName, DOM.withdrawUpiId];
     bankInputs.forEach(function (inp) {
       if (inp) {
@@ -1544,7 +1640,6 @@
       });
     }
 
-    // Dynamic sync for deposit inputs & buttons
     if (DOM.modalDepositInput) {
       DOM.modalDepositInput.addEventListener("input", function () {
         const val = parseFloat(DOM.modalDepositInput.value) || 0;
@@ -1577,7 +1672,7 @@
       });
     }
 
-    // Modal Deposit Action (Saves Real-Money in Firestore & LocalState)
+    // Modal Deposit Action
     if (DOM.btnModalDepositConfirm) {
       DOM.btnModalDepositConfirm.addEventListener("click", function () {
         const amt = parseFloat(DOM.modalDepositInput ? DOM.modalDepositInput.value : 100) || 100;
@@ -1691,7 +1786,6 @@
       });
     }
 
-    // Quick percentages for withdrawal
     if (DOM.withdrawPercentChips) {
       DOM.withdrawPercentChips.forEach(function (chip) {
         chip.addEventListener("click", function () {
@@ -1829,8 +1923,7 @@
           '<td>' + (savedState.userEmail || "pilot@aerocrash.com") + '</td>' +
           '<td style="color:var(--status-info);">' + clientIP + '</td>' +
           '<td style="color:var(--status-success); font-weight:700;">' + formatRupees(savedState.virtualBalance) + '</td>' +
-          '</tr>' +
-          '<tr><td colspan="4" style="text-align:center; color:var(--text-dim); font-size:9px; padding:6px;">LIVE TELEMETRY ACTIVE • FIRESTORE SYNCED</td></tr>';
+          '</tr>';
       });
   }
 
@@ -1914,115 +2007,17 @@
   // EVENT LISTENERS & SETUP
   //====================================================================
   function setupEventListeners() {
-    // Bet Slot Tabs Switcher
-    if (DOM.tabSlot1 && DOM.tabSlot2) {
-      DOM.tabSlot1.addEventListener("click", function () {
-        activeBetSlotTab = 1;
-        DOM.tabSlot1.classList.add("active");
-        DOM.tabSlot2.classList.remove("active");
-        if (DOM.betCard1) DOM.betCard1.classList.add("active");
-        if (DOM.betCard2 && !isDualViewMode) DOM.betCard2.classList.remove("active");
-      });
-
-      DOM.tabSlot2.addEventListener("click", function () {
-        activeBetSlotTab = 2;
-        DOM.tabSlot2.classList.add("active");
-        DOM.tabSlot1.classList.remove("active");
-        if (DOM.betCard2) DOM.betCard2.classList.add("active");
-        if (DOM.betCard1 && !isDualViewMode) DOM.betCard1.classList.remove("active");
-      });
-    }
-
-    if (DOM.btnToggleDual) {
-      DOM.btnToggleDual.addEventListener("click", function () {
-        isDualViewMode = !isDualViewMode;
-        DOM.btnToggleDual.classList.toggle("active", isDualViewMode);
-        if (DOM.betPanelsWrapper) {
-          DOM.betPanelsWrapper.classList.toggle("dual-mode", isDualViewMode);
-        }
-        if (isDualViewMode) {
-          if (DOM.betCard1) DOM.betCard1.classList.add("active");
-          if (DOM.betCard2) DOM.betCard2.classList.add("active");
+    if (DOM.btnAddBetPanel) {
+      DOM.btnAddBetPanel.addEventListener("click", function () {
+        if (activeSlotIds.length < CONFIG.MAX_SIMULTANEOUS_BETS) {
+          const nextId = Math.max.apply(null, activeSlotIds) + 1;
+          activeSlotIds.push(nextId);
+          renderDynamicBetPanels();
         } else {
-          if (activeBetSlotTab === 1) {
-            if (DOM.betCard1) DOM.betCard1.classList.add("active");
-            if (DOM.betCard2) DOM.betCard2.classList.remove("active");
-          } else {
-            if (DOM.betCard2) DOM.betCard2.classList.add("active");
-            if (DOM.betCard1) DOM.betCard1.classList.remove("active");
-          }
+          showActionFeedback("MAXIMUM 4 SIMULTANEOUS BETS REACHED", "info");
         }
       });
     }
-
-    // Action Buttons for Slot 1 and Slot 2
-    if (DOM.btnAction1) DOM.btnAction1.addEventListener("click", function () { handleActionClickForSlot(1); });
-    if (DOM.btnAction2) DOM.btnAction2.addEventListener("click", function () { handleActionClickForSlot(2); });
-
-    // Steppers for Slot 1
-    if (DOM.btnStakeInc1 && DOM.stakeInput1) {
-      DOM.btnStakeInc1.addEventListener("click", function () {
-        let val = parseFloat(DOM.stakeInput1.value) || 10;
-        val = Math.min(CONFIG.MAX_STAKE, val + 10);
-        DOM.stakeInput1.value = val.toFixed(2);
-        updateActionButtons();
-      });
-    }
-    if (DOM.btnStakeDec1 && DOM.stakeInput1) {
-      DOM.btnStakeDec1.addEventListener("click", function () {
-        let val = parseFloat(DOM.stakeInput1.value) || 10;
-        val = Math.max(CONFIG.MIN_STAKE, val - 10);
-        DOM.stakeInput1.value = val.toFixed(2);
-        updateActionButtons();
-      });
-    }
-
-    // Steppers for Slot 2
-    if (DOM.btnStakeInc2 && DOM.stakeInput2) {
-      DOM.btnStakeInc2.addEventListener("click", function () {
-        let val = parseFloat(DOM.stakeInput2.value) || 10;
-        val = Math.min(CONFIG.MAX_STAKE, val + 10);
-        DOM.stakeInput2.value = val.toFixed(2);
-        updateActionButtons();
-      });
-    }
-    if (DOM.btnStakeDec2 && DOM.stakeInput2) {
-      DOM.btnStakeDec2.addEventListener("click", function () {
-        let val = parseFloat(DOM.stakeInput2.value) || 10;
-        val = Math.max(CONFIG.MIN_STAKE, val - 10);
-        DOM.stakeInput2.value = val.toFixed(2);
-        updateActionButtons();
-      });
-    }
-
-    // Quick chips for Slot 1
-    if (DOM.chips1) {
-      DOM.chips1.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          DOM.chips1.forEach(function (c) { c.classList.remove("active"); });
-          chip.classList.add("active");
-          const val = chip.getAttribute("data-val");
-          if (DOM.stakeInput1) DOM.stakeInput1.value = parseFloat(val).toFixed(2);
-          updateActionButtons();
-        });
-      });
-    }
-
-    // Quick chips for Slot 2
-    if (DOM.chips2) {
-      DOM.chips2.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          DOM.chips2.forEach(function (c) { c.classList.remove("active"); });
-          chip.classList.add("active");
-          const val = chip.getAttribute("data-val");
-          if (DOM.stakeInput2) DOM.stakeInput2.value = parseFloat(val).toFixed(2);
-          updateActionButtons();
-        });
-      });
-    }
-
-    if (DOM.stakeInput1) DOM.stakeInput1.addEventListener("input", updateActionButtons);
-    if (DOM.stakeInput2) DOM.stakeInput2.addEventListener("input", updateActionButtons);
 
     if (DOM.tabCtrlBetting && DOM.tabCtrlHistory) {
       DOM.tabCtrlBetting.addEventListener("click", function () {
@@ -2038,17 +2033,6 @@
         if (DOM.controlsHistoryView) DOM.controlsHistoryView.classList.add("active");
         if (DOM.controlsBettingView) DOM.controlsBettingView.classList.remove("active");
         renderPersonalHistoryLogs();
-      });
-    }
-
-    if (DOM.btnClearAuto1) {
-      DOM.btnClearAuto1.addEventListener("click", function () {
-        if (DOM.autoInput1) DOM.autoInput1.value = "2.00";
-      });
-    }
-    if (DOM.btnClearAuto2) {
-      DOM.btnClearAuto2.addEventListener("click", function () {
-        if (DOM.autoInput2) DOM.autoInput2.value = "3.00";
       });
     }
 
@@ -2165,8 +2149,9 @@
           const manual = parseFloat(DOM.gmTargetInput.value);
           if (!isNaN(manual) && manual >= 1.01) {
             crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+            sharedRound.crashMultiplier = crashMultiplier;
             if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-            publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
+            publishSharedRoundState();
           }
         }
       });
@@ -2176,13 +2161,12 @@
         if (DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 2.5) || 2.5;
           crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
-          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-          publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
         } else {
           crashMultiplier = generateCrashPoint();
-          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-          publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
         }
+        sharedRound.crashMultiplier = crashMultiplier;
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        publishSharedRoundState();
       });
     }
 
@@ -2370,9 +2354,7 @@
         ip: clientIP,
         authMode: authMode,
         timestamp: new Date()
-      }).catch(function (e) {
-        console.warn("[AeroCrash] Login audit log:", e.message);
-      });
+      }).catch(function () {});
     }
 
     if (!db) {
@@ -2402,11 +2384,7 @@
           upiDetails: savedState.upiDetails || {},
           lastIP: clientIP,
           lastLoginAt: new Date()
-        }, { merge: true }).then(function () {
-          console.log("[AeroCrash] Firestore profile synced for user:", uid);
-        }).catch(function (e) {
-          console.warn("[AeroCrash] Firestore user sync notice:", e.message);
-        });
+        }, { merge: true }).catch(function () {});
       } else {
         savedState.callsign = customCallsign || email.split("@")[0].toUpperCase() || "MAVERICK";
         savedState.virtualBalance = CONFIG.INITIAL_BALANCE;
@@ -2422,11 +2400,7 @@
           lastIP: clientIP,
           lastLoginAt: new Date(),
           career: savedState.career
-        }).then(function () {
-          console.log("[AeroCrash] New Pilot account registered in Firestore:", uid);
-        }).catch(function (e) {
-          console.error("[AeroCrash] Firestore new user creation error:", e);
-        });
+        }).catch(function () {});
       }
 
       saveState();
@@ -2434,7 +2408,7 @@
       listenToUserDoc(uid);
       completeLoginRouting(authMode);
     }).catch(function (err) {
-      console.warn("[AeroCrash] Backend sync error, falling back to local state:", err);
+      console.warn("[AeroCrash] Backend sync fallback to local state:", err);
       saveState();
       populateSavedBankDetails();
       completeLoginRouting(authMode);
@@ -2490,6 +2464,7 @@
     setupAuthFlow();
     setupAdminPortal();
     initGlobalMultiplayerSync();
+    renderDynamicBetPanels();
     resizeCanvas();
     updateActionButtons();
 
@@ -2504,10 +2479,14 @@
         } else {
           switchScreen("AUTH");
         }
-        transitionTo("BETTING");
+        if (!hasReceivedFirstSnapshot || !sharedRound.state) {
+          applyStateTransition("BETTING", false);
+        } else {
+          applyStateTransition(sharedRound.state, true);
+        }
         requestAnimationFrame(gameLoop);
       }
-    }, 40);
+    }, 35);
   }
 
   window.addEventListener("DOMContentLoaded", init);
