@@ -437,25 +437,33 @@
   //====================================================================
   const MAX_POSSIBLE_MULTIPLIER = 30.00;
 
-  function generateCrashPoint() {
+  // High-performance deterministic pseudo-random generator (Mulberry32)
+  function seededRandom(seed) {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+
+  function generateCrashPoint(roundSeed) {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
       const manual = parseFloat(DOM.gmTargetInput.value);
       if (!isNaN(manual) && manual >= 1.05) {
         return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(manual * 100) / 100);
       }
     }
-    const r = Math.random();
+    const r = (typeof roundSeed === "number") ? seededRandom(roundSeed) : Math.random();
     let point = 1.15;
     if (r < 0.12) {
-      point = 1.10 + Math.random() * 0.25; // 1.10x - 1.35x
+      point = 1.10 + (r / 0.12) * 0.25; // 1.10x - 1.35x
     } else if (r < 0.55) {
-      point = 1.36 + Math.random() * 1.44; // 1.36x - 2.80x
+      point = 1.36 + ((r - 0.12) / 0.43) * 1.44; // 1.36x - 2.80x
     } else if (r < 0.82) {
-      point = 2.81 + Math.random() * 2.69; // 2.81x - 5.50x
+      point = 2.81 + ((r - 0.55) / 0.27) * 2.69; // 2.81x - 5.50x
     } else if (r < 0.94) {
-      point = 5.51 + Math.random() * 6.49; // 5.51x - 12.00x
+      point = 5.51 + ((r - 0.82) / 0.12) * 6.49; // 5.51x - 12.00x
     } else {
-      point = 12.01 + Math.random() * 15.99; // 12.01x - 28.00x
+      point = 12.01 + ((r - 0.94) / 0.06) * 15.99; // 12.01x - 28.00x
     }
     return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(point * 100) / 100);
   }
@@ -557,24 +565,79 @@
 
   //====================================================================
   // UNIVERSAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE
+  // (Deterministic Epoch Clock + Real-time Cloud Firestore Master Sync)
   //====================================================================
   const localSessionId = "pilot_" + Math.random().toString(36).substring(2, 9);
   let isGlobalSyncActive = false;
   let globalRoundUnsubscribe = null;
   let hasReceivedFirstSnapshot = false;
 
-  let sharedRound = {
-    roundNumber: 2848,
-    state: "BETTING",
-    crashMultiplier: 2.50,
-    bettingStartTime: Date.now(),
-    launchingStartTime: 0,
-    launchStartTime: 0,
-    crashedAt: 0,
-    resultStartTime: 0,
-    masterId: localSessionId,
-    updatedAt: Date.now()
-  };
+  // Compute deterministic flight time for a given crash multiplier
+  function getFlightDurationSec(targetMulti) {
+    if (targetMulti <= 1.0) return 0.5;
+    // inverse of calculateMultiplier: multi = exp(0.048 * sec^1.10)
+    // ln(multi) = 0.048 * sec^1.10  =>  sec = (ln(multi) / 0.048)^(1 / 1.10)
+    const logM = Math.log(Math.max(1.001, targetMulti));
+    const sec = Math.pow(logM / 0.048, 1 / 1.10);
+    return Math.max(0.5, Math.min(60, sec));
+  }
+
+  // Get epoch deterministic round info for exact millisecond
+  function getEpochDeterministicRound(epochMs) {
+    const epochBase = 1710000000000; // Fixed reference epoch
+    const now = (typeof epochMs === "number") ? epochMs : Date.now();
+    const diff = Math.max(0, now - epochBase);
+
+    // Approximate average cycle duration: 8000 + 1000 + ~8500 + 1600 + 2000 = 21100ms
+    const estCycle = 21000;
+    let roundIndex = Math.floor(diff / estCycle);
+
+    // Seeded round calculation to find exact cycle boundaries
+    let rNum = 3000 + roundIndex;
+    let crashTarget = generateCrashPoint(rNum * 7919);
+    let flightMs = Math.round(getFlightDurationSec(crashTarget) * 1000);
+    let totalRoundMs = CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs + CONFIG.TIMINGS.CRASHED_MS + CONFIG.TIMINGS.RESULT_MS;
+
+    let cycleStart = epochBase + (roundIndex * estCycle);
+    // Align boundaries
+    let offsetInCycle = (now - cycleStart) % totalRoundMs;
+    if (offsetInCycle < 0) offsetInCycle += totalRoundMs;
+
+    let rState = "BETTING";
+    let bStart = now - offsetInCycle;
+    let lStart = bStart + CONFIG.TIMINGS.BETTING_MS;
+    let runStart = lStart + CONFIG.TIMINGS.LAUNCHING_MS;
+    let crashStart = runStart + flightMs;
+    let resStart = crashStart + CONFIG.TIMINGS.CRASHED_MS;
+
+    if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS) {
+      rState = "BETTING";
+    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS) {
+      rState = "LAUNCHING";
+    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs) {
+      rState = "RUNNING";
+    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs + CONFIG.TIMINGS.CRASHED_MS) {
+      rState = "CRASHED";
+    } else {
+      rState = "RESULT";
+    }
+
+    return {
+      roundNumber: rNum,
+      state: rState,
+      crashMultiplier: crashTarget,
+      bettingStartTime: bStart,
+      launchingStartTime: lStart,
+      launchStartTime: runStart,
+      crashedAt: crashStart,
+      resultStartTime: resStart,
+      masterId: "epoch_universal",
+      updatedAt: now
+    };
+  }
+
+  const initialEpochRound = getEpochDeterministicRound(Date.now());
+  let sharedRound = Object.assign({}, initialEpochRound, { masterId: localSessionId });
 
   function isLocalMaster() {
     if (savedState.userRole === "admin") return true;
@@ -585,7 +648,20 @@
   }
 
   function initGlobalMultiplayerSync() {
-    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    // Start with deterministic epoch round clock
+    const currentEpochSync = getEpochDeterministicRound(Date.now());
+    roundNumber = currentEpochSync.roundNumber;
+    crashMultiplier = currentEpochSync.crashMultiplier;
+    sharedRound = Object.assign(sharedRound, currentEpochSync);
+
+    if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
+    if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+    subscribeToActiveBets(roundNumber);
+
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) {
+      hasReceivedFirstSnapshot = true;
+      return;
+    }
     if (isGlobalSyncActive) return;
     isGlobalSyncActive = true;
 
@@ -593,8 +669,6 @@
 
     globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
       if (!doc.exists) {
-        sharedRound.bettingStartTime = Date.now();
-        sharedRound.masterId = localSessionId;
         publishSharedRoundState();
         hasReceivedFirstSnapshot = true;
         return;
@@ -603,10 +677,16 @@
       const data = doc.data();
       hasReceivedFirstSnapshot = true;
 
+      // Ignore stale document updates older than 15 seconds
+      const now = Date.now();
+      if (data.updatedAt && (now - data.updatedAt) > 15000) {
+        return;
+      }
+
       const oldRound = sharedRound.roundNumber;
       sharedRound = Object.assign(sharedRound, data);
 
-      if (sharedRound.roundNumber !== oldRound) {
+      if (sharedRound.roundNumber && sharedRound.roundNumber !== oldRound) {
         roundNumber = sharedRound.roundNumber;
         if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
         subscribeToActiveBets(roundNumber);
@@ -635,7 +715,7 @@
         console.log("[AeroCrash Multiplayer] Synced state to cloud:", sharedRound.state, "Round #" + sharedRound.roundNumber, "Target:", sharedRound.crashMultiplier + "x");
       })
       .catch(function (err) {
-        console.warn("[AeroCrash Multiplayer] Warning: game_state write blocked by Firestore Security Rules. Please publish open rules in Firebase Console -> Rules tab:", err.message);
+        console.warn("[AeroCrash Multiplayer] Note on game_state write:", err.message);
       });
   }
 
@@ -1299,8 +1379,9 @@
       const rStart = sharedRound.resultStartTime || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - rStart);
       if (elapsed >= CONFIG.TIMINGS.RESULT_MS && isMaster) {
-        sharedRound.roundNumber = (sharedRound.roundNumber || roundNumber) + 1;
-        sharedRound.crashMultiplier = generateCrashPoint();
+        const nextRound = (sharedRound.roundNumber || roundNumber) + 1;
+        sharedRound.roundNumber = nextRound;
+        sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
         crashMultiplier = sharedRound.crashMultiplier;
         sharedRound.state = "BETTING";
         sharedRound.bettingStartTime = nowEpoch;
