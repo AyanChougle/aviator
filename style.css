@@ -395,6 +395,21 @@ input {
   box-shadow: 0 0 0 2px rgba(255, 115, 0, 0.15);
 }
 
+/* Prevent Chrome / Edge / Firefox browser autofill light background glitch */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px #121927 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  box-shadow: 0 0 0 1000px #121927 inset !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .field-hint {
   font-family: var(--font-mono);
   font-size: 10px;

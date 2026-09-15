@@ -2257,6 +2257,16 @@
     if (DOM.btnGmToggle) {
       DOM.btnGmToggle.addEventListener("click", function () {
         if (DOM.drawerGM) DOM.drawerGM.classList.add("active");
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.gmTargetInput && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
+          DOM.gmTargetInput.value = crashMultiplier.toFixed(2);
+          gmPresetBtns.forEach(function (b) {
+            const bVal = parseFloat(b.getAttribute("data-multi"));
+            if (Math.abs(bVal - crashMultiplier) < 0.01) b.classList.add("selected");
+            else b.classList.remove("selected");
+          });
+        }
       });
     }
     if (DOM.btnGmClose) {
