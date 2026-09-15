@@ -440,24 +440,24 @@
   function generateCrashPoint() {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
       const manual = parseFloat(DOM.gmTargetInput.value);
-      if (!isNaN(manual) && manual >= 1.01) {
+      if (!isNaN(manual) && manual >= 1.05) {
         return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(manual * 100) / 100);
       }
     }
     const r = Math.random();
-    let point = 1.00;
-    if (r < 0.08) {
-      point = Math.floor((1.00 + Math.random() * 0.15) * 100) / 100;
-    } else if (r < 0.60) {
-      point = Math.floor((1.16 + Math.random() * 1.24) * 100) / 100;
-    } else if (r < 0.88) {
-      point = Math.floor((2.41 + Math.random() * 3.09) * 100) / 100;
-    } else if (r < 0.97) {
-      point = Math.floor((5.51 + Math.random() * 6.49) * 100) / 100;
+    let point = 1.15;
+    if (r < 0.12) {
+      point = 1.10 + Math.random() * 0.25; // 1.10x - 1.35x
+    } else if (r < 0.55) {
+      point = 1.36 + Math.random() * 1.44; // 1.36x - 2.80x
+    } else if (r < 0.82) {
+      point = 2.81 + Math.random() * 2.69; // 2.81x - 5.50x
+    } else if (r < 0.94) {
+      point = 5.51 + Math.random() * 6.49; // 5.51x - 12.00x
     } else {
-      point = Math.floor((12.01 + Math.random() * 12.99) * 100) / 100;
+      point = 12.01 + Math.random() * 15.99; // 12.01x - 28.00x
     }
-    return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.max(1.00, point));
+    return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(point * 100) / 100);
   }
 
   function calculateMultiplier(elapsedSec) {
@@ -1275,7 +1275,7 @@
         isManualCrashPending = false;
         sharedRound.state = "CRASHED";
         sharedRound.crashedAt = nowEpoch;
-        sharedRound.crashMultiplier = liveMultiplier;
+        sharedRound.crashedMultiplier = liveMultiplier;
         publishSharedRoundState();
         applyStateTransition("CRASHED");
       }
@@ -1296,8 +1296,11 @@
       if (elapsed >= CONFIG.TIMINGS.RESULT_MS && isMaster) {
         sharedRound.roundNumber = (sharedRound.roundNumber || roundNumber) + 1;
         sharedRound.crashMultiplier = generateCrashPoint();
+        crashMultiplier = sharedRound.crashMultiplier;
         sharedRound.state = "BETTING";
         sharedRound.bettingStartTime = nowEpoch;
+        sharedRound.launchStartTime = 0;
+        sharedRound.crashedAt = 0;
         publishSharedRoundState();
         applyStateTransition("BETTING");
       }
@@ -2186,6 +2189,7 @@
       });
     }
     if (DOM.gmOverrideEnabled) {
+      DOM.gmOverrideEnabled.checked = false; // Never lock to 2.50x by default
       DOM.gmOverrideEnabled.addEventListener("change", function () {
         if (DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 2.5) || 2.5;
