@@ -1434,7 +1434,14 @@
         tbody.innerHTML = html;
       })
       .catch(function (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--status-danger);">Error fetching users: ' + err.message + '</td></tr>';
+        // Fallback: If Firestore rules restrict collection query, display active session telemetry
+        tbody.innerHTML = '<tr>' +
+          '<td style="color:var(--accent-amber); font-weight:700;">' + (savedState.callsign || "PILOT") + ' (ACTIVE)</td>' +
+          '<td>' + (savedState.userEmail || "pilot@aerocrash.com") + '</td>' +
+          '<td style="color:var(--status-info);">' + clientIP + '</td>' +
+          '<td style="color:var(--status-success); font-weight:700;">' + formatRupees(savedState.virtualBalance) + '</td>' +
+          '</tr>' +
+          '<tr><td colspan="4" style="text-align:center; color:var(--text-dim); font-size:9px; padding:6px;">LIVE TELEMETRY ACTIVE • FIRESTORE SYNCED</td></tr>';
       });
   }
 

@@ -2818,3 +2818,150 @@ input:checked + .slider:before {
 .auth-tabs-clean {
   grid-template-columns: repeat(2, 1fr) !important;
 }
+
+
+/* ===================================================================
+   TACTICAL GAME MASTER DRAWER THEME OVERRIDES (NO EMOJIS, CLEAN AESTHETIC)
+   =================================================================== */
+.btn-game-master {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 107, 34, 0.12);
+  border: 1px solid rgba(255, 107, 34, 0.4);
+  color: var(--accent-orange);
+  padding: 4px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-game-master:hover {
+  background: rgba(255, 107, 34, 0.22);
+  border-color: var(--accent-orange);
+  box-shadow: 0 0 12px rgba(255, 107, 34, 0.25);
+  color: #ffffff;
+}
+
+.btn-game-master .crown-icon {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent-orange);
+}
+
+.drawer {
+  background-color: var(--bg-surface-1) !important;
+  border-left: 1px solid var(--border-mid) !important;
+  box-shadow: -8px 0 24px rgba(0, 0, 0, 0.7);
+}
+
+.drawer-header {
+  height: 50px !important;
+  background-color: var(--bg-surface-2) !important;
+  border-bottom: 1px solid var(--border-mid) !important;
+  padding: 0 16px !important;
+}
+
+.gm-drawer-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gm-crown-svg {
+  width: 15px;
+  height: 15px;
+  fill: var(--accent-orange);
+  flex-shrink: 0;
+}
+
+.drawer-header h2 {
+  font-family: var(--font-mono) !important;
+  font-size: 11px !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.8px !important;
+  color: var(--accent-orange) !important;
+}
+
+.admin-drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background-color: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 5px;
+  gap: 5px;
+}
+
+.admin-tab-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--bg-surface-3);
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 8px 4px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.admin-tab-btn:hover {
+  color: var(--text-main);
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.admin-tab-btn.active {
+  background: rgba(255, 107, 34, 0.15) !important;
+  color: var(--accent-orange) !important;
+  border: 1px solid rgba(255, 107, 34, 0.5) !important;
+  box-shadow: 0 0 10px rgba(255, 107, 34, 0.15);
+}
+
+.admin-tab-svg {
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+  stroke-width: 2px;
+}
+
+.drawer-section h3 {
+  font-family: var(--font-mono) !important;
+  color: var(--accent-amber) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.8px !important;
+  border-bottom: 1px solid var(--border-dim) !important;
+}
+
+.admin-table-container {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-xs);
+  background: var(--bg-surface-2);
+}
+
+.admin-data-table th {
+  background-color: var(--bg-surface-3);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 8px;
+  letter-spacing: 0.5px;
+}
+
+.admin-data-table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  font-family: var(--font-mono);
+}
+
+.wifi-svg {
+  vertical-align: middle;
+  stroke: var(--status-success);
+}

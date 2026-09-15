@@ -130,7 +130,7 @@
           <div id="payment-current-balance" class="val">₹10.00</div>
         </div>
         <div class="free-credit-badge">
-          ★ FREE BONUS<br>₹10 ALLOTTED
+          ● FREE BONUS<br>₹10 ALLOTTED
         </div>
       </div>
 
@@ -329,7 +329,7 @@
             <div class="auto-input-card">
               <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
               <input type="number" id="input-auto-cashout" value="2.00" min="1.05" max="100.00" step="0.05" aria-label="Auto cashout multiplier">
-              <button type="button" id="btn-clear-autocashout" class="btn-clear-input" aria-label="Reset auto cashout">✕</button>
+              <button type="button" id="btn-clear-autocashout" class="btn-clear-input" aria-label="Reset auto cashout">&times;</button>
             </div>
           </div>
 
@@ -499,7 +499,7 @@
         <span class="footer-motto">CRASH • BET • WIN</span>
       </div>
       <div class="status-right">
-        <span class="wifi-icon">📶</span>
+        <span class="wifi-icon"><svg class="wifi-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg></span>
         <span class="status-dot green"></span>
         <span>SERVER ONLINE</span>
         <span id="footer-live-clock" class="footer-clock">22:17:32</span>
@@ -773,7 +773,7 @@
           <h3>ACCOUNT CONTROLS</h3>
           <div class="danger-actions">
             <button type="button" id="btn-open-wallet-from-dossier" class="btn-wallet-action-dossier">
-              💳 OPEN WALLET (ADD / WITHDRAW)
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="vertical-align:middle;margin-right:4px;"><path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"></path><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"></path><circle cx="18" cy="14" r="1"></circle></svg>OPEN WALLET (ADD / WITHDRAW)
             </button>
             <button type="button" id="btn-reset-stats" class="btn-secondary">RESET STATS</button>
             <button type="button" id="btn-auth-signout" class="btn-danger">SIGN OUT</button>
@@ -794,15 +794,27 @@
   <!-- ========================================== -->
   <aside id="drawer-game-master" class="drawer" role="dialog" aria-modal="true" aria-labelledby="gm-drawer-heading">
     <header class="drawer-header">
-      <h2 id="gm-drawer-heading">👑 GAME MASTER PORTAL [ADMIN]</h2>
+      <div class="gm-drawer-title-wrap">
+        <svg class="gm-crown-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z"/></svg>
+        <h2 id="gm-drawer-heading">GAME MASTER // COMMAND PORTAL</h2>
+      </div>
       <button type="button" id="btn-gm-close" class="drawer-close" aria-label="Close Game Master">×</button>
     </header>
 
     <!-- ADMIN DRAWER TABS -->
     <div class="admin-drawer-tabs">
-      <button type="button" class="admin-tab-btn active" id="tab-admin-flight" data-tab="flight">🎮 CONTROLS</button>
-      <button type="button" class="admin-tab-btn" id="tab-admin-users" data-tab="users">👥 USERS & IP</button>
-      <button type="button" class="admin-tab-btn" id="tab-admin-withdrawals" data-tab="withdrawals">💸 WITHDRAWALS</button>
+      <button type="button" class="admin-tab-btn active" id="tab-admin-flight" data-tab="flight">
+        <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
+        <span>CONTROLS</span>
+      </button>
+      <button type="button" class="admin-tab-btn" id="tab-admin-users" data-tab="users">
+        <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <span>USERS &amp; IP</span>
+      </button>
+      <button type="button" class="admin-tab-btn" id="tab-admin-withdrawals" data-tab="withdrawals">
+        <svg class="admin-tab-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+        <span>WITHDRAWALS</span>
+      </button>
     </div>
 
     <div class="drawer-content">
