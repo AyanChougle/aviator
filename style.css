@@ -3126,3 +3126,142 @@ input:-webkit-autofill:active {
   caret-color: #f1f5f9 !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
+
+/* ===================================================================
+   DUAL BET PANELS SYSTEM (MULTIPLE BETS IN ONE)
+   =================================================================== */
+.bet-slot-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--bg-surface-2);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-sm);
+  padding: 4px;
+  gap: 4px;
+}
+
+.bet-slot-tabs {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+}
+
+.bet-slot-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--bg-surface-3);
+  border: 1px solid transparent;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 6px 10px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.bet-slot-tab:hover {
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.bet-slot-tab.active {
+  background: rgba(255, 107, 34, 0.15);
+  border-color: var(--accent-orange);
+  color: var(--accent-orange);
+}
+
+.slot-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.2s;
+}
+
+.bet-slot-tab.has-bet .slot-status-dot {
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+
+.btn-dual-mode-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-surface-3);
+  border: 1px solid var(--border-dim);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 6px 8px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+  transition: var(--transition-fast);
+}
+
+.btn-dual-mode-toggle.active,
+.btn-dual-mode-toggle:hover {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+  background: rgba(245, 158, 11, 0.12);
+}
+
+.bet-panels-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.bet-panels-container.dual-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.single-bet-card {
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(18, 25, 38, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--radius-md);
+  padding: 12px;
+}
+
+.single-bet-card.active {
+  display: flex;
+}
+
+.bet-panels-container.dual-mode .single-bet-card {
+  display: flex !important;
+}
+
+.card-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 6px;
+  margin-bottom: 2px;
+}
+
+.slot-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: var(--accent-amber);
+}
+
+.slot-stake-summary {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--status-success);
+}

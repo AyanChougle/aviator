@@ -1,38 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
     function signedIn() {
       return request.auth != null;
     }
 
     function isAdmin() {
       return signedIn() && (
-        request.auth.token.email == 'carrentpedatabase@gmail.com'
+        request.auth.token.email == 'carrentpedatabase@gmail.com' ||
+        request.auth.token.email.matches('^admin.*')
       );
     }
 
+    // 1. Pilot Profiles, Bank Details, and Balances
     match /users/{userId} {
-      // A pilot can only read/write their own profile.
-      allow read, create, update: if signedIn() && request.auth.uid == userId;
-      allow delete: if isAdmin() && request.auth.uid == userId;
+      allow read, write, create, update: if signedIn();
+      allow delete: if isAdmin();
     }
 
+    // 2. Real-Time Active Squadron Bets
+    match /active_bets/{betId} {
+      allow read, write, create, update, delete: if signedIn();
+    }
+
+    // 3. Global Synchronized Game Rounds State
+    match /game_state/{stateId} {
+      allow read, write, create, update: if signedIn();
+    }
+
+    // 4. Real-Money Wallet Deposits
+    match /deposits/{depositId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // 5. Instant Bank & UPI Withdrawal Requests
+    match /withdrawals/{withdrawalId} {
+      allow read, create, update: if signedIn();
+      allow delete: if isAdmin();
+    }
+
+    // 6. Pilot Authentication & Access Audit Logs
     match /login_logs/{logId} {
-      // Client may create an audit record only for itself; no client reads/updates/deletes.
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow read, update, delete: if isAdmin();
+      allow create: if signedIn();
+      allow read, delete: if isAdmin();
     }
 
-    match /payment_logs/{logId} {
-      // Client can create its own prototype payment record. Admin can inspect it.
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow read: if isAdmin() || (signedIn() && resource.data.uid == request.auth.uid);
-      allow update, delete: if isAdmin();
-    }
-
-    // Deny everything else by default.
+    // 7. General Fallback for Authenticated Pilots
     match /{document=**} {
-      allow read, write: if false;
+      allow read, write: if signedIn();
     }
   }
 }

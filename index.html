@@ -290,62 +290,151 @@
           </button>
         </div>
 
-        <div id="controls-betting-view" class="controls-view active">
-          <!-- STAKE AMOUNT SECTION -->
-          <div class="control-box stake-section">
-            <label for="input-stake">STAKE AMOUNT</label>
-            <div class="stake-stepper-card">
-              <span class="currency-symbol">₹</span>
-              <input type="number" id="input-stake" value="10.00" min="10" max="8000" step="10" aria-label="Stake in Rupees">
-              <div class="stepper-arrows">
-                <button type="button" id="btn-stake-inc" class="btn-arrow-step" aria-label="Increase stake">▲</button>
-                <button type="button" id="btn-stake-dec" class="btn-arrow-step" aria-label="Decrease stake">▼</button>
-              </div>
+                <div id="controls-betting-view" class="controls-view active">
+          <!-- DUAL BET SELECTOR HEADER -->
+          <div class="bet-slot-bar">
+            <div class="bet-slot-tabs">
+              <button type="button" class="bet-slot-tab active" id="tab-bet-slot-1" data-slot="1">
+                <span>BET 1</span>
+                <span class="slot-status-dot" id="slot-dot-1"></span>
+              </button>
+              <button type="button" class="bet-slot-tab" id="tab-bet-slot-2" data-slot="2">
+                <span>BET 2</span>
+                <span class="slot-status-dot" id="slot-dot-2"></span>
+              </button>
             </div>
-
-            <!-- QUICK CHIP GRID: [10, 25, 50, 100], [200, 500, 1K, 5K] -->
-            <div class="quick-stake-grid">
-              <button type="button" class="btn-chip active" data-value="10">10</button>
-              <button type="button" class="btn-chip" data-value="25">25</button>
-              <button type="button" class="btn-chip" data-value="50">50</button>
-              <button type="button" class="btn-chip" data-value="100">100</button>
-              <button type="button" class="btn-chip" data-value="200">200</button>
-              <button type="button" class="btn-chip" data-value="500">500</button>
-              <button type="button" class="btn-chip" data-value="1000">1K</button>
-              <button type="button" class="btn-chip" data-value="5000">5K</button>
-            </div>
-          </div>
-
-          <!-- AUTO CASHOUT SECTION -->
-          <div class="control-box auto-section">
-            <div class="auto-header-row">
-              <label for="input-auto-cashout">AUTO CASHOUT</label>
-              <label class="switch-toggle" for="check-auto-cashout">
-                <input type="checkbox" id="check-auto-cashout">
-                <span class="slider round"></span>
-              </label>
-            </div>
-
-            <div class="auto-input-card">
-              <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
-              <input type="number" id="input-auto-cashout" value="2.00" min="1.05" max="100.00" step="0.05" aria-label="Auto cashout multiplier">
-              <button type="button" id="btn-clear-autocashout" class="btn-clear-input" aria-label="Reset auto cashout">&times;</button>
-            </div>
-          </div>
-
-          <!-- TAKEOFF / CASH OUT ACTION BUTTON -->
-          <div class="action-section">
-            <button type="button" id="btn-action" class="btn-action-takeoff state-bet">
-              <svg class="action-plane-icon" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/>
-              </svg>
-              <div class="action-btn-content">
-                <span id="action-btn-text">TAKEOFF</span>
-                <span id="action-btn-subtext" class="btn-subtext">Stake: ₹10.00</span>
-              </div>
+            <button type="button" class="btn-dual-mode-toggle" id="btn-toggle-dual-mode" title="Toggle Dual Bet Panels View">
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18" rx="1"></rect><rect x="13" y="3" width="8" height="18" rx="1"></rect></svg>
+              <span>DUAL</span>
             </button>
-            <div id="action-feedback" class="action-feedback"></div>
           </div>
+
+          <!-- BET CONTAINER (SUPPORTS TAB SWITCH & DUAL SIDE-BY-SIDE / STACKED) -->
+          <div class="bet-panels-container" id="bet-panels-wrapper">
+            <!-- PANEL 1 -->
+            <div class="single-bet-card active" id="bet-card-1" data-slot="1">
+              <div class="card-slot-header">
+                <span class="slot-title">SLOT 01 // PRIMARY</span>
+                <span class="slot-stake-summary" id="slot-summary-1">₹10.00</span>
+              </div>
+
+              <!-- STAKE AMOUNT SECTION 1 -->
+              <div class="control-box stake-section">
+                <label for="input-stake-1">STAKE AMOUNT (₹)</label>
+                <div class="stake-stepper-card">
+                  <span class="currency-symbol">₹</span>
+                  <input type="number" id="input-stake-1" value="10.00" min="10" max="8000" step="10" aria-label="Stake 1 in Rupees">
+                  <div class="stepper-arrows">
+                    <button type="button" id="btn-stake-inc-1" class="btn-arrow-step" aria-label="Increase stake 1">▲</button>
+                    <button type="button" id="btn-stake-dec-1" class="btn-arrow-step" aria-label="Decrease stake 1">▼</button>
+                  </div>
+                </div>
+
+                <div class="quick-stake-grid" id="quick-grid-1">
+                  <button type="button" class="btn-chip active" data-val="10">10</button>
+                  <button type="button" class="btn-chip" data-val="25">25</button>
+                  <button type="button" class="btn-chip" data-val="50">50</button>
+                  <button type="button" class="btn-chip" data-val="100">100</button>
+                  <button type="button" class="btn-chip" data-val="200">200</button>
+                  <button type="button" class="btn-chip" data-val="500">500</button>
+                  <button type="button" class="btn-chip" data-val="1000">1K</button>
+                  <button type="button" class="btn-chip" data-val="5000">5K</button>
+                </div>
+              </div>
+
+              <!-- AUTO CASHOUT SECTION 1 -->
+              <div class="control-box auto-section">
+                <div class="auto-header-row">
+                  <label for="input-auto-cashout-1">AUTO CASHOUT</label>
+                  <label class="switch-toggle" for="check-auto-cashout-1">
+                    <input type="checkbox" id="check-auto-cashout-1">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <div class="auto-input-card">
+                  <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
+                  <input type="number" id="input-auto-cashout-1" value="2.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 1">
+                  <button type="button" id="btn-clear-autocashout-1" class="btn-clear-input" aria-label="Reset auto cashout 1">&times;</button>
+                </div>
+              </div>
+
+              <!-- ACTION BUTTON 1 -->
+              <div class="action-section">
+                <button type="button" id="btn-action-1" class="btn-action-takeoff state-bet">
+                  <svg class="action-plane-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/>
+                  </svg>
+                  <div class="action-btn-content">
+                    <span id="action-btn-text-1">TAKEOFF (BET 1)</span>
+                    <span id="action-btn-subtext-1" class="btn-subtext">Stake: ₹10.00</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <!-- PANEL 2 -->
+            <div class="single-bet-card" id="bet-card-2" data-slot="2">
+              <div class="card-slot-header">
+                <span class="slot-title">SLOT 02 // SECONDARY</span>
+                <span class="slot-stake-summary" id="slot-summary-2">₹10.00</span>
+              </div>
+
+              <!-- STAKE AMOUNT SECTION 2 -->
+              <div class="control-box stake-section">
+                <label for="input-stake-2">STAKE AMOUNT (₹)</label>
+                <div class="stake-stepper-card">
+                  <span class="currency-symbol">₹</span>
+                  <input type="number" id="input-stake-2" value="10.00" min="10" max="8000" step="10" aria-label="Stake 2 in Rupees">
+                  <div class="stepper-arrows">
+                    <button type="button" id="btn-stake-inc-2" class="btn-arrow-step" aria-label="Increase stake 2">▲</button>
+                    <button type="button" id="btn-stake-dec-2" class="btn-arrow-step" aria-label="Decrease stake 2">▼</button>
+                  </div>
+                </div>
+
+                <div class="quick-stake-grid" id="quick-grid-2">
+                  <button type="button" class="btn-chip active" data-val="10">10</button>
+                  <button type="button" class="btn-chip" data-val="25">25</button>
+                  <button type="button" class="btn-chip" data-val="50">50</button>
+                  <button type="button" class="btn-chip" data-val="100">100</button>
+                  <button type="button" class="btn-chip" data-val="200">200</button>
+                  <button type="button" class="btn-chip" data-val="500">500</button>
+                  <button type="button" class="btn-chip" data-val="1000">1K</button>
+                  <button type="button" class="btn-chip" data-val="5000">5K</button>
+                </div>
+              </div>
+
+              <!-- AUTO CASHOUT SECTION 2 -->
+              <div class="control-box auto-section">
+                <div class="auto-header-row">
+                  <label for="input-auto-cashout-2">AUTO CASHOUT</label>
+                  <label class="switch-toggle" for="check-auto-cashout-2">
+                    <input type="checkbox" id="check-auto-cashout-2">
+                    <span class="slider round"></span>
+                  </label>
+                </div>
+                <div class="auto-input-card">
+                  <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
+                  <input type="number" id="input-auto-cashout-2" value="3.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 2">
+                  <button type="button" id="btn-clear-autocashout-2" class="btn-clear-input" aria-label="Reset auto cashout 2">&times;</button>
+                </div>
+              </div>
+
+              <!-- ACTION BUTTON 2 -->
+              <div class="action-section">
+                <button type="button" id="btn-action-2" class="btn-action-takeoff state-bet">
+                  <svg class="action-plane-icon" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/>
+                  </svg>
+                  <div class="action-btn-content">
+                    <span id="action-btn-text-2">TAKEOFF (BET 2)</span>
+                    <span id="action-btn-subtext-2" class="btn-subtext">Stake: ₹10.00</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="action-feedback" class="action-feedback"></div>
 
           <!-- WALLET BALANCE CARD (CLICKABLE) -->
           <div id="card-wallet-bottom" class="wallet-summary-card" role="button" tabindex="0" title="Click to Deposit or Withdraw Funds">

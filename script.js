@@ -2,6 +2,7 @@
  * AEROCRASH — TACTICAL HIGH-ALTITUDE FLIGHT SIMULATOR
  * Modernized UI, Live Telemetry, Multiplayer Squadron, Full Bank & UPI Withdrawal System, Firestore Cloud Sync
  * Real-Time IP Detection, Unpredictable Dynamic Physics, Admin User & Withdrawal Management
+ * Real-time Synchronized Multi-User Global Gameplay, Real-User Active Bets, Dual/Multiple Betting System
  */
 
 (function () {
@@ -39,6 +40,16 @@
     userRole: "user", // "user" | "admin"
     isLoggedIn: false,
     virtualBalance: CONFIG.INITIAL_BALANCE,
+    bankDetails: {
+      bankName: "",
+      holder: "",
+      account: "",
+      ifsc: ""
+    },
+    upiDetails: {
+      upiName: "",
+      upiId: ""
+    },
     career: {
       roundsPlayed: 0,
       roundsWon: 0,
@@ -50,9 +61,6 @@
       bestPayoutVc: 0,
     },
     history: [],
-    autoStake: 10,
-    autoCashoutEnabled: false,
-    autoCashoutValue: 2.0,
     audioEnabled: true,
   };
 
@@ -65,7 +73,6 @@
           clientIP = data.ip;
           const ipElem = document.getElementById("dossier-user-ip");
           if (ipElem) ipElem.textContent = clientIP;
-          // Sync IP to Firestore if logged in
           if (savedState.isLoggedIn) saveState();
         }
       })
@@ -100,116 +107,94 @@
     }
   }
 
-  function saveState(options) {
-    options = options || {};
+  function saveState() {
     try {
       localStorage.setItem(CONFIG.STORAGE_KEY, JSON.stringify(savedState));
-      // Sync to Firestore if user is authenticated
-      if (options.syncFirestore !== false && window.AERO_FIREBASE && window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser && window.AERO_FIREBASE.db) {
-        const uid = window.AERO_FIREBASE.auth.currentUser.uid;
-        window.AERO_FIREBASE.db.collection("users").doc(uid).set({
-          callsign: savedState.callsign,
-          email: savedState.userEmail,
-          role: savedState.userRole,
-          balance: savedState.virtualBalance,
-          career: savedState.career,
-          lastIP: clientIP,
-          geo: clientGeo,
-          device: navigator.userAgent,
-          lastActive: new Date()
-        }, { merge: true }).catch(function (err) {
-          console.warn("Firestore sync warning:", err);
-        });
-      }
     } catch (e) {
       console.warn("Failed to save storage", e);
     }
   }
 
-  function formatRupees(amount) {
-    const num = Number(amount) || 0;
-    return "₹" + num.toLocaleString("en-IN", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    });
+  // Currency Formatter: Indian Rupee (₹)
+  function formatRupees(amt) {
+    if (typeof amt !== "number" || isNaN(amt)) amt = 0;
+    return "₹" + amt.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  //====================================================================
-  // WEB AUDIO SYNTHESIZER
-  //====================================================================
-  let audioCtx = null;
+  // Audio Engine
+  let audioContext = null;
   function initAudio() {
-    if (!audioCtx) {
-      const ACtx = window.AudioContext || window.webkitAudioContext;
-      if (ACtx) audioCtx = new ACtx();
-    }
-    if (audioCtx && audioCtx.state === "suspended") {
-      audioCtx.resume();
-    }
-  }
-
-  function playBeep(freq, duration, type) {
-    if (!audioCtx || !savedState.audioEnabled) return;
-    type = type || "square";
+    if (!savedState.audioEnabled) return;
     try {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = type;
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + duration);
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!audioContext && AudioCtx) audioContext = new AudioCtx();
+      if (audioContext && audioContext.state === "suspended") audioContext.resume();
     } catch (e) {}
   }
 
-  function soundCountdown() { playBeep(440, 0.08, "square"); }
-  function soundLaunch() { playBeep(880, 0.25, "triangle"); }
+  function playTone(freq, type, duration, vol) {
+    if (!savedState.audioEnabled || !audioContext) return;
+    try {
+      const osc = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, audioContext.currentTime);
+      gain.gain.setValueAtTime(vol || 0.15, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioContext.destination);
+      osc.start();
+      osc.stop(audioContext.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function soundCountdown() { playTone(440, "triangle", 0.08, 0.12); }
+  function soundLaunch() { playTone(280, "sine", 0.4, 0.2); }
   function soundCashout() {
-    playBeep(523, 0.1, "sine");
-    setTimeout(function () { playBeep(659, 0.15, "sine"); }, 90);
-    setTimeout(function () { playBeep(784, 0.25, "sine"); }, 180);
+    playTone(587, "sine", 0.1, 0.2);
+    setTimeout(function () { playTone(880, "sine", 0.25, 0.25); }, 90);
   }
-  function soundCrash() {
-    if (!audioCtx || !savedState.audioEnabled) return;
-    try {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(160, audioCtx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(30, audioCtx.currentTime + 0.45);
-      gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.45);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.45);
-    } catch (e) {}
-  }
+  function soundCrash() { playTone(120, "sawtooth", 0.5, 0.3); }
 
-  //====================================================================
-  // CORE GAME STATE
-  //====================================================================
-  let currentScreen = "SPLASH";
-  let gameState = "WAITING"; // WAITING, BETTING, LAUNCHING, RUNNING, CRASHED, RESULT
-  let roundNumber = 2847;
-  let roundStartTime = 0;
-  let launchStartTime = 0;
+  //===================================================================
+  // ENGINE & GAME STATE VARIABLES
+  //===================================================================
+  let gameState = "BETTING"; // "BETTING", "LAUNCHING", "RUNNING", "CRASHED", "RESULT"
+  let roundNumber = 2848;
   let liveMultiplier = 1.00;
   let crashMultiplier = 2.50;
-  let isManualCrashPending = false;
+  let roundStartTime = 0;
+  let launchStartTime = 0;
+  let currentScreen = "SPLASH";
   let isGamePaused = false;
-  let fleetCount = 136;
+  let isManualCrashPending = false;
+  let fleetCount = 150;
 
-  let isBetPlaced = false;
-  let currentStake = 10;
-  let isCashedOut = false;
-  let cashoutMultiplier = 0.0;
-  let cashoutAmount = 0;
+  // DUAL BET SLOTS (MULTIPLE BETS IN ONE)
+  let bets = {
+    1: {
+      isPlaced: false,
+      stake: 10,
+      isCashedOut: false,
+      cashoutMultiplier: 0.0,
+      cashoutAmount: 0,
+      autoEnabled: false,
+      autoValue: 2.00
+    },
+    2: {
+      isPlaced: false,
+      stake: 10,
+      isCashedOut: false,
+      cashoutMultiplier: 0.0,
+      cashoutAmount: 0,
+      autoEnabled: false,
+      autoValue: 3.00
+    }
+  };
 
-  let squadronPilots = [];
+  let activeBetSlotTab = 1;
+  let isDualViewMode = false;
+
   let currentAuthMode = "login";
   let userDocUnsubscribe = null;
 
@@ -263,21 +248,48 @@
       chipName: document.getElementById("profile-chip-name"),
       tickerList: document.getElementById("history-ticker-list"),
 
-      // Left Controls Panel
+      // Left Controls Navigation
       tabCtrlBetting: document.getElementById("tab-ctrl-betting"),
       tabCtrlHistory: document.getElementById("tab-ctrl-history"),
       controlsBettingView: document.getElementById("controls-betting-view"),
       controlsHistoryView: document.getElementById("controls-history-view"),
-      stakeInput: document.getElementById("input-stake"),
-      btnStakeInc: document.getElementById("btn-stake-inc"),
-      btnStakeDec: document.getElementById("btn-stake-dec"),
-      quickStakeChips: document.querySelectorAll(".quick-stake-grid .btn-chip"),
-      autoCheck: document.getElementById("check-auto-cashout"),
-      autoInput: document.getElementById("input-auto-cashout"),
-      btnClearAutocashout: document.getElementById("btn-clear-autocashout"),
-      btnAction: document.getElementById("btn-action"),
-      actionText: document.getElementById("action-btn-text"),
-      actionSubtext: document.getElementById("action-btn-subtext"),
+
+      // Dual Bet Slots Tabs & Container
+      tabSlot1: document.getElementById("tab-bet-slot-1"),
+      tabSlot2: document.getElementById("tab-bet-slot-2"),
+      slotDot1: document.getElementById("slot-dot-1"),
+      slotDot2: document.getElementById("slot-dot-2"),
+      btnToggleDual: document.getElementById("btn-toggle-dual-mode"),
+      betPanelsWrapper: document.getElementById("bet-panels-wrapper"),
+      betCard1: document.getElementById("bet-card-1"),
+      betCard2: document.getElementById("bet-card-2"),
+      slotSummary1: document.getElementById("slot-summary-1"),
+      slotSummary2: document.getElementById("slot-summary-2"),
+
+      // Slot 1 Controls
+      stakeInput1: document.getElementById("input-stake-1"),
+      btnStakeInc1: document.getElementById("btn-stake-inc-1"),
+      btnStakeDec1: document.getElementById("btn-stake-dec-1"),
+      chips1: document.querySelectorAll("#quick-grid-1 .btn-chip"),
+      autoCheck1: document.getElementById("check-auto-cashout-1"),
+      autoInput1: document.getElementById("input-auto-cashout-1"),
+      btnClearAuto1: document.getElementById("btn-clear-autocashout-1"),
+      btnAction1: document.getElementById("btn-action-1"),
+      actionText1: document.getElementById("action-btn-text-1"),
+      actionSubtext1: document.getElementById("action-btn-subtext-1"),
+
+      // Slot 2 Controls
+      stakeInput2: document.getElementById("input-stake-2"),
+      btnStakeInc2: document.getElementById("btn-stake-inc-2"),
+      btnStakeDec2: document.getElementById("btn-stake-dec-2"),
+      chips2: document.querySelectorAll("#quick-grid-2 .btn-chip"),
+      autoCheck2: document.getElementById("check-auto-cashout-2"),
+      autoInput2: document.getElementById("input-auto-cashout-2"),
+      btnClearAuto2: document.getElementById("btn-clear-autocashout-2"),
+      btnAction2: document.getElementById("btn-action-2"),
+      actionText2: document.getElementById("action-btn-text-2"),
+      actionSubtext2: document.getElementById("action-btn-subtext-2"),
+
       actionFeedback: document.getElementById("action-feedback"),
       cardWalletBottom: document.getElementById("card-wallet-bottom"),
       userBalanceDisplay: document.getElementById("user-vc-display"),
@@ -405,71 +417,59 @@
     });
 
     if (screenName === "SPLASH" && DOM.screenSplash) DOM.screenSplash.classList.add("active");
-    if (screenName === "AUTH" && DOM.screenAuth) DOM.screenAuth.classList.add("active");
-    if (screenName === "PAYMENT" && DOM.screenPayment) DOM.screenPayment.classList.add("active");
-    if (screenName === "GAME" && DOM.screenGame) {
+    else if (screenName === "AUTH" && DOM.screenAuth) DOM.screenAuth.classList.add("active");
+    else if (screenName === "PAYMENT" && DOM.screenPayment) DOM.screenPayment.classList.add("active");
+    else if (screenName === "GAME" && DOM.screenGame) {
       DOM.screenGame.classList.add("active");
-      setTimeout(resizeCanvas, 50);
+      resizeCanvas();
     }
   }
 
   function updatePlayerUIBalance() {
     const formatted = formatRupees(savedState.virtualBalance);
-    if (DOM.userBalanceDisplay) DOM.userBalanceDisplay.textContent = formatted;
     if (DOM.headerBalanceVal) DOM.headerBalanceVal.textContent = formatted;
+    if (DOM.userBalanceDisplay) DOM.userBalanceDisplay.textContent = formatted;
     if (DOM.paymentCurrentBalance) DOM.paymentCurrentBalance.textContent = formatted;
     if (DOM.modalWalletBalanceVal) DOM.modalWalletBalanceVal.textContent = formatted;
     if (DOM.dossierBalance) DOM.dossierBalance.textContent = formatted;
 
-    if (DOM.totalStakedDisplay) DOM.totalStakedDisplay.textContent = formatRupees(savedState.career.totalVcStaked);
-    if (DOM.totalWinsDisplay) DOM.totalWinsDisplay.textContent = formatRupees(savedState.career.totalVcWon);
-
     if (DOM.chipName) DOM.chipName.textContent = savedState.callsign || "PILOT";
     if (DOM.chipAvatarLetter) DOM.chipAvatarLetter.textContent = (savedState.callsign || "P").charAt(0).toUpperCase();
-    if (DOM.dossierCallsign) DOM.dossierCallsign.textContent = savedState.callsign || "MAVERICK";
-    if (DOM.dossierUserIp) DOM.dossierUserIp.textContent = clientIP || "Detecting...";
+
+    if (DOM.totalStakedDisplay) DOM.totalStakedDisplay.textContent = formatRupees(savedState.career.totalVcStaked);
+    if (DOM.totalWinsDisplay) DOM.totalWinsDisplay.textContent = formatRupees(savedState.career.totalVcWon);
   }
 
-  function showActionFeedback(msg, type) {
+  function showActionFeedback(text, type) {
     if (!DOM.actionFeedback) return;
-    DOM.actionFeedback.textContent = msg;
-    DOM.actionFeedback.className = "action-feedback active " + (type || "success");
+    DOM.actionFeedback.textContent = text;
+    DOM.actionFeedback.className = "action-feedback active " + (type || "info");
     setTimeout(function () {
-      if (DOM.actionFeedback) DOM.actionFeedback.classList.remove("active");
+      if (DOM.actionFeedback) DOM.actionFeedback.className = "action-feedback";
     }, 2800);
   }
 
   function addTickerBadge(multi) {
     if (!DOM.tickerList) return;
-    const badge = document.createElement("span");
-    badge.className = "ticker-badge";
-    if (multi < 2.0) badge.classList.add("multi-low");
-    else if (multi < 10.0) badge.classList.add("multi-mid");
-    else badge.classList.add("multi-high");
+    const badge = document.createElement("div");
+    badge.className = "ticker-badge" + (multi >= 2.0 ? " high" : "");
     badge.textContent = multi.toFixed(2) + "x";
-
     DOM.tickerList.insertBefore(badge, DOM.tickerList.firstChild);
-    while (DOM.tickerList.children.length > 20) {
+    while (DOM.tickerList.children.length > 12) {
       DOM.tickerList.removeChild(DOM.tickerList.lastChild);
     }
   }
 
-  function addFeedItem(text, type) {
+  function addFeedItem(msg, type) {
     if (!DOM.activityFeedList) return;
-    const now = new Date();
-    const timeStr = now.toTimeString().split(" ")[0];
     const item = document.createElement("div");
-    item.className = "feed-item " + (type || "");
-
-    item.innerHTML = '<span class="timestamp">' + timeStr + '</span>' +
-      '<span class="dot"></span>' +
-      '<span class="event-text">' + text + '</span>';
-
-    DOM.activityFeedList.appendChild(item);
-    while (DOM.activityFeedList.children.length > 30) {
-      DOM.activityFeedList.removeChild(DOM.activityFeedList.firstChild);
+    item.className = "feed-item" + (type ? " " + type : "");
+    const timeStr = new Date().toLocaleTimeString();
+    item.textContent = timeStr + "  " + msg;
+    DOM.activityFeedList.insertBefore(item, DOM.activityFeedList.firstChild);
+    while (DOM.activityFeedList.children.length > 25) {
+      DOM.activityFeedList.removeChild(DOM.activityFeedList.lastChild);
     }
-    DOM.activityFeedList.scrollTop = DOM.activityFeedList.scrollHeight;
   }
 
   function updateLiveClock() {
@@ -480,9 +480,9 @@
   setInterval(updateLiveClock, 1000);
 
   //====================================================================
-  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE
+  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE (REALISTIC CEILING 30.00x)
   //====================================================================
-  const MAX_POSSIBLE_MULTIPLIER = 30.00; // Realistic crash multiplier ceiling (max 30.00x)
+  const MAX_POSSIBLE_MULTIPLIER = 30.00;
 
   function generateCrashPoint() {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
@@ -494,314 +494,24 @@
     const r = Math.random();
     let point = 1.00;
     if (r < 0.08) {
-      // Early crash (1.00x - 1.15x)
       point = Math.floor((1.00 + Math.random() * 0.15) * 100) / 100;
     } else if (r < 0.60) {
-      // Standard low multiplier (1.16x - 2.40x)
       point = Math.floor((1.16 + Math.random() * 1.24) * 100) / 100;
     } else if (r < 0.88) {
-      // Medium climb (2.41x - 5.50x)
       point = Math.floor((2.41 + Math.random() * 3.09) * 100) / 100;
     } else if (r < 0.97) {
-      // High altitude (5.51x - 12.00x)
       point = Math.floor((5.51 + Math.random() * 6.49) * 100) / 100;
     } else {
-      // Rare high flight (12.01x - 25.00x, capped at 30.00x)
       point = Math.floor((12.01 + Math.random() * 12.99) * 100) / 100;
     }
-    
     return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.max(1.00, point));
   }
 
   function calculateMultiplier(elapsedSec) {
-    // Natural steady aerodynamic climb (smooth realistic progression)
     const exponent = 0.048 * Math.pow(elapsedSec, 1.10);
     const multi = Math.max(1.00, Math.exp(exponent));
     return Math.min(MAX_POSSIBLE_MULTIPLIER, multi);
   }
-
-  function transitionTo(newState) {
-    gameState = newState;
-
-    if (DOM.statePill) DOM.statePill.textContent = newState;
-    if (DOM.stateDot) {
-      DOM.stateDot.className = "status-dot " + (newState === "RUNNING" ? "green" : newState === "BETTING" ? "amber" : "red");
-    }
-
-    switch (newState) {
-      case "BETTING":
-        roundNumber++;
-        if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
-        if (DOM.statePill) DOM.statePill.textContent = "BETTING OPEN";
-        isBetPlaced = false;
-        isCashedOut = false;
-        cashoutMultiplier = 0.0;
-        cashoutAmount = 0;
-        liveMultiplier = 1.00;
-        crashMultiplier = generateCrashPoint();
-        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-        roundStartTime = performance.now();
-        liveTrail = [];
-
-        subscribeToActiveBets(roundNumber);
-        publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
-
-        if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
-        if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
-        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.remove("hidden");
-        if (DOM.playerResultBanner) DOM.playerResultBanner.classList.remove("active");
-
-        addFeedItem("ROUND #" + roundNumber + " BETS OPEN // TAKEOFF IN 8s");
-        updateActionButton();
-        break;
-
-      case "LAUNCHING":
-        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
-        if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
-        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-        soundLaunch();
-        publishGlobalRoundState("LAUNCHING", roundNumber, crashMultiplier, Date.now());
-        updateActionButton();
-        break;
-
-      case "RUNNING":
-        launchStartTime = performance.now();
-        liveTrail = [];
-        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
-        if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
-        if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
-        if (DOM.statePill) DOM.statePill.textContent = "IN PROGRESS";
-        publishGlobalRoundState("RUNNING", roundNumber, crashMultiplier, Date.now());
-        updateActionButton();
-        break;
-
-      case "CRASHED":
-        soundCrash();
-        publishGlobalRoundState("CRASHED", roundNumber, liveMultiplier, Date.now());
-        renderSquadronTable();
-        addTickerBadge(liveMultiplier);
-        addFeedItem("FLIGHT CRASHED @ " + liveMultiplier.toFixed(2) + "x", "crashed");
-
-        if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
-        if (DOM.crashOverlay) DOM.crashOverlay.classList.remove("hidden");
-        if (DOM.crashMultiplier) DOM.crashMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.statePill) DOM.statePill.textContent = "FLEW AWAY";
-
-        if (isBetPlaced && !isCashedOut) {
-          savedState.career.roundsPlayed++;
-          savedState.career.roundsLost++;
-          savedState.career.totalVcLost += currentStake;
-          savedState.history.unshift({
-            round: roundNumber,
-            stake: currentStake,
-            multiplier: 0,
-            profit: -currentStake,
-            status: "LOSS",
-            time: new Date().toLocaleTimeString()
-          });
-          saveState();
-          updateCareerTables();
-          renderPersonalHistoryLogs();
-          showActionFeedback("FLEW AWAY — Lost " + formatRupees(currentStake), "danger");
-        }
-        isBetPlaced = false;
-        updateActionButton();
-
-        setTimeout(function () {
-          if (gameState === "CRASHED") transitionTo("RESULT");
-        }, CONFIG.TIMINGS.CRASHED_MS);
-        break;
-
-      case "RESULT":
-        updateCareerTables();
-        setTimeout(function () {
-          if (gameState === "RESULT") transitionTo("BETTING");
-        }, CONFIG.TIMINGS.RESULT_MS);
-        break;
-    }
-  }
-
-  //====================================================================
-  // BETTING CONTROLS
-  //====================================================================
-  function getCurrentStakeInput() {
-    if (!DOM.stakeInput) return CONFIG.MIN_STAKE;
-    let val = parseFloat(DOM.stakeInput.value) || CONFIG.MIN_STAKE;
-    return Math.max(CONFIG.MIN_STAKE, Math.min(CONFIG.MAX_STAKE, val));
-  }
-
-  function updateActionButton() {
-    if (!DOM.btnAction) return;
-    DOM.btnAction.className = "btn-action-takeoff";
-    DOM.btnAction.disabled = false;
-
-    if (gameState === "BETTING" || gameState === "WAITING") {
-      if (isBetPlaced) {
-        DOM.btnAction.classList.add("state-cancel");
-        DOM.actionText.textContent = "CANCEL BET";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Staked: " + formatRupees(currentStake);
-      } else {
-        DOM.btnAction.classList.add("state-bet");
-        DOM.actionText.textContent = "TAKEOFF";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Stake: " + formatRupees(getCurrentStakeInput());
-      }
-    } else if (gameState === "LAUNCHING") {
-      if (isBetPlaced) {
-        DOM.btnAction.classList.add("state-cashout");
-        DOM.actionText.textContent = "AIRBORNE SOON";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Engines Spooling...";
-        DOM.btnAction.disabled = true;
-      } else {
-        DOM.btnAction.disabled = true;
-        DOM.actionText.textContent = "TAKEOFF";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Doors Closed";
-      }
-    } else if (gameState === "RUNNING") {
-      if (isBetPlaced && !isCashedOut) {
-        const currentPayout = Math.floor(currentStake * liveMultiplier * 100) / 100;
-        DOM.btnAction.classList.add("state-cashout");
-        DOM.actionText.textContent = "CASH OUT " + liveMultiplier.toFixed(2) + "x";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Payout: " + formatRupees(currentPayout);
-      } else if (isCashedOut) {
-        DOM.btnAction.disabled = true;
-        DOM.btnAction.classList.add("state-cashout");
-        DOM.actionText.textContent = "CASHED OUT";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Won: +" + formatRupees(cashoutAmount - currentStake);
-      } else {
-        DOM.btnAction.disabled = true;
-        DOM.actionText.textContent = "IN FLIGHT";
-        if (DOM.actionSubtext) DOM.actionSubtext.textContent = "Waiting for next round...";
-      }
-    } else {
-      DOM.btnAction.disabled = true;
-      DOM.actionText.textContent = "ROUND SETTLED";
-      if (DOM.actionSubtext) DOM.actionSubtext.textContent = gameState === "CRASHED" ? "Flight crashed" : "Preparing round...";
-    }
-  }
-
-  function placeBet() {
-    const stake = getCurrentStakeInput();
-    if (savedState.virtualBalance < stake) {
-      showActionFeedback("INSUFFICIENT BALANCE // ADD FUNDS", "danger");
-      openWalletModal("deposit");
-      return;
-    }
-    savedState.virtualBalance -= stake;
-    savedState.career.totalVcStaked += stake;
-    currentStake = stake;
-    isBetPlaced = true;
-    saveState();
-    updatePlayerUIBalance();
-    updateActionButton();
-    addFeedItem(savedState.callsign + " staked " + formatRupees(stake));
-
-    // Sync real bet to Firestore active_bets collection
-    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
-      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
-      const betDocId = "r" + roundNumber + "_" + userKey;
-      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).set({
-        round: roundNumber,
-        email: savedState.userEmail || "pilot@aerocrash.com",
-        callsign: savedState.callsign || "PILOT",
-        stake: currentStake,
-        targetMulti: 0,
-        cashoutValue: 0,
-        profit: 0,
-        hasCashedOut: false,
-        status: "ACTIVE",
-        placedAt: new Date()
-      }).catch(function () {});
-    }
-  }
-
-  function cancelBet() {
-    if (!isBetPlaced || gameState !== "BETTING") return;
-    savedState.virtualBalance += currentStake;
-    savedState.career.totalVcStaked -= currentStake;
-    isBetPlaced = false;
-    saveState();
-    updatePlayerUIBalance();
-    updateActionButton();
-    addFeedItem(savedState.callsign + " cancelled stake");
-
-    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
-      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
-      const betDocId = "r" + roundNumber + "_" + userKey;
-      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).delete().catch(function () {});
-    }
-  }
-
-  function cashOut() {
-    if (!isBetPlaced || isCashedOut || gameState !== "RUNNING") return;
-    isCashedOut = true;
-    cashoutMultiplier = liveMultiplier;
-    cashoutAmount = Math.floor(currentStake * cashoutMultiplier * 100) / 100;
-    const profit = cashoutAmount - currentStake;
-
-    savedState.virtualBalance += cashoutAmount;
-    savedState.career.roundsPlayed++;
-    savedState.career.roundsWon++;
-    savedState.career.totalVcWon += profit;
-    if (cashoutMultiplier > savedState.career.highestCashoutMulti) {
-      savedState.career.highestCashoutMulti = cashoutMultiplier;
-    }
-    if (cashoutAmount > savedState.career.bestPayoutVc) {
-      savedState.career.bestPayoutVc = cashoutAmount;
-    }
-
-    savedState.history.unshift({
-      round: roundNumber,
-      stake: currentStake,
-      multiplier: cashoutMultiplier,
-      profit: profit,
-      status: "WIN",
-      time: new Date().toLocaleTimeString()
-    });
-
-    saveState();
-    updatePlayerUIBalance();
-    updateCareerTables();
-    renderPersonalHistoryLogs();
-    soundCashout();
-
-    // Sync cashout to Firestore active_bets
-    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
-      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
-      const betDocId = "r" + roundNumber + "_" + userKey;
-      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).update({
-        hasCashedOut: true,
-        targetMulti: cashoutMultiplier,
-        cashoutValue: cashoutAmount,
-        profit: profit,
-        status: "CASHED_OUT"
-      }).catch(function () {});
-    }
-
-    if (DOM.playerResultBanner) {
-      DOM.playerResultBanner.textContent = "CASHED OUT " + formatRupees(cashoutAmount) + " (" + cashoutMultiplier.toFixed(2) + "x)";
-      DOM.playerResultBanner.classList.add("active");
-    }
-
-    addFeedItem(savedState.callsign + " CASHED OUT @" + cashoutMultiplier.toFixed(2) + "x (+" + formatRupees(cashoutAmount) + ")", "cashout");
-    updateActionButton();
-  }
-
-  function handleActionClick() {
-    initAudio();
-    if (gameState === "BETTING" || gameState === "WAITING") {
-      if (isBetPlaced) cancelBet();
-      else placeBet();
-    } else if (gameState === "RUNNING") {
-      if (isBetPlaced && !isCashedOut) cashOut();
-    }
-  }
-
-  window.addEventListener("keydown", function (e) {
-    if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
-      e.preventDefault();
-      handleActionClick();
-    }
-  });
 
   //====================================================================
   // REAL-TIME MULTIPLAYER SYNCHRONIZED SQUADRON BETS
@@ -826,11 +536,11 @@
       activeBetsUnsubscribe = window.AERO_FIREBASE.db.collection("active_bets")
         .where("round", "==", roundNum)
         .onSnapshot(function (snapshot) {
-          const bets = [];
+          const betsArr = [];
           snapshot.forEach(function (doc) {
-            bets.push(doc.data());
+            betsArr.push(doc.data());
           });
-          realSquadronBets = bets;
+          realSquadronBets = betsArr;
           renderSquadronTable();
         }, function () {
           renderSquadronTable();
@@ -852,28 +562,28 @@
     }
 
     let html = "";
-    realSquadronBets.forEach(function (bet, index) {
-      const isCashed = bet.hasCashedOut;
+    realSquadronBets.forEach(function (b, index) {
+      const isCashed = b.hasCashedOut;
       const isCrash = gameState === "CRASHED" && !isCashed;
       const statusClass = isCashed ? "cashed-out" : isCrash ? "crashed" : "placed-true";
-      const cashoutText = isCashed ? formatRupees(bet.cashoutValue || (bet.stake * (bet.targetMulti || 1))) : "—";
-      const multiText = isCashed ? (bet.targetMulti ? bet.targetMulti.toFixed(2) + "x" : "—") : isCrash ? "1.00x" : "—";
+      const cashoutText = isCashed ? formatRupees(b.cashoutValue || (b.stake * (b.targetMulti || 1))) : "—";
+      const multiText = isCashed ? (b.targetMulti ? b.targetMulti.toFixed(2) + "x" : "—") : isCrash ? "1.00x" : "—";
       
       let profitHtml = '<span style="color:var(--text-dim);">—</span>';
       if (isCashed) {
-        const profit = (bet.cashoutValue || (bet.stake * (bet.targetMulti || 1))) - bet.stake;
+        const profit = (b.cashoutValue || (b.stake * (b.targetMulti || 1))) - b.stake;
         profitHtml = '<span class="profit-pos">+' + formatRupees(profit) + '</span>';
       } else if (isCrash) {
-        profitHtml = '<span class="profit-neg">-' + formatRupees(bet.stake) + '</span>';
+        profitHtml = '<span class="profit-neg">-' + formatRupees(b.stake) + '</span>';
       }
 
       const pilotId = "#" + (8400 + (index % 100));
-      const displayName = bet.callsign || (bet.email ? bet.email.split("@")[0].toUpperCase() : "PILOT");
+      const displayName = b.callsign || (b.email ? b.email.split("@")[0].toUpperCase() : "PILOT");
 
       html += '<tr class="' + statusClass + '">' +
         '<td>' + pilotId + '</td>' +
         '<td style="font-weight:700; color:' + (displayName === savedState.callsign ? 'var(--accent-orange)' : 'var(--text-main)') + ';">' + displayName + '</td>' +
-        '<td>' + formatRupees(bet.stake) + '</td>' +
+        '<td>' + formatRupees(b.stake) + '</td>' +
         '<td>' + cashoutText + '</td>' +
         '<td>' + multiText + '</td>' +
         '<td>' + profitHtml + '</td>' +
@@ -886,10 +596,8 @@
     }
   }
 
-
   //====================================================================
   // GLOBAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE
-  // (ALL PLAYERS WORLDWIDE SHARE THE SAME ROUND, MULTIPLIER, & TIMING)
   //====================================================================
   let isGlobalSyncActive = false;
   let globalRoundUnsubscribe = null;
@@ -903,7 +611,6 @@
 
     globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
       if (!doc.exists) {
-        // Initialize global round if document does not exist yet
         publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
         return;
       }
@@ -911,7 +618,6 @@
       const data = doc.data();
       const serverNow = Date.now();
 
-      // If remote round number is newer, sync to it
       if (data.roundNumber && data.roundNumber !== roundNumber) {
         roundNumber = data.roundNumber;
         crashMultiplier = data.crashMultiplier || generateCrashPoint();
@@ -920,13 +626,11 @@
         subscribeToActiveBets(roundNumber);
       }
 
-      // If admin modified crashMultiplier in Firestore
       if (data.crashMultiplier && Math.abs(data.crashMultiplier - crashMultiplier) > 0.01) {
         crashMultiplier = data.crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
       }
 
-      // Synchronize states
       if (data.state && data.state !== gameState) {
         if (data.state === "RUNNING") {
           launchStartTime = performance.now() - Math.max(0, serverNow - (data.launchStartTime || serverNow));
@@ -957,7 +661,351 @@
   }
 
   //====================================================================
-  // DYNAMIC UNPREDICTABLE CANVAS PHYSICS (NO FIXED ENDPOINT)
+  // DUAL BETTING CONTROLLER (SLOT 1 & SLOT 2)
+  //====================================================================
+  function getStakeForSlot(slot) {
+    const input = slot === 2 ? DOM.stakeInput2 : DOM.stakeInput1;
+    let val = parseFloat(input ? input.value : 10) || 10;
+    return Math.max(CONFIG.MIN_STAKE, Math.min(CONFIG.MAX_STAKE, val));
+  }
+
+  function updateActionButtons() {
+    [1, 2].forEach(function (slot) {
+      const b = bets[slot];
+      const btn = slot === 2 ? DOM.btnAction2 : DOM.btnAction1;
+      const text = slot === 2 ? DOM.actionText2 : DOM.actionText1;
+      const sub = slot === 2 ? DOM.actionSubtext2 : DOM.actionSubtext1;
+      const summary = slot === 2 ? DOM.slotSummary2 : DOM.slotSummary1;
+      const dot = slot === 2 ? DOM.slotDot2 : DOM.slotDot1;
+      const tab = slot === 2 ? DOM.tabSlot2 : DOM.tabSlot1;
+
+      if (!btn) return;
+      btn.className = "btn-action-takeoff";
+      btn.disabled = false;
+
+      if (summary) summary.textContent = formatRupees(getStakeForSlot(slot));
+
+      if (b.isPlaced) {
+        if (dot) dot.style.background = "var(--status-success)";
+        if (tab) tab.classList.add("has-bet");
+      } else {
+        if (dot) dot.style.background = "var(--text-dim)";
+        if (tab) tab.classList.remove("has-bet");
+      }
+
+      if (gameState === "BETTING" || gameState === "WAITING") {
+        if (b.isPlaced) {
+          btn.classList.add("state-cancel");
+          text.textContent = "CANCEL (BET " + slot + ")";
+          if (sub) sub.textContent = "Staked: " + formatRupees(b.stake);
+        } else {
+          btn.classList.add("state-bet");
+          text.textContent = "TAKEOFF (BET " + slot + ")";
+          if (sub) sub.textContent = "Stake: " + formatRupees(getStakeForSlot(slot));
+        }
+      } else if (gameState === "LAUNCHING") {
+        if (b.isPlaced) {
+          btn.classList.add("state-cashout");
+          text.textContent = "AIRBORNE SOON";
+          if (sub) sub.textContent = "Engines Spooling...";
+          btn.disabled = true;
+        } else {
+          btn.disabled = true;
+          text.textContent = "TAKEOFF (BET " + slot + ")";
+          if (sub) sub.textContent = "Doors Closed";
+        }
+      } else if (gameState === "RUNNING") {
+        if (b.isPlaced && !b.isCashedOut) {
+          const currentPayout = Math.floor(b.stake * liveMultiplier * 100) / 100;
+          btn.classList.add("state-cashout");
+          text.textContent = "CASH OUT " + liveMultiplier.toFixed(2) + "x (B" + slot + ")";
+          if (sub) sub.textContent = "Payout: " + formatRupees(currentPayout);
+        } else if (b.isCashedOut) {
+          btn.disabled = true;
+          btn.classList.add("state-cashout");
+          text.textContent = "CASHED OUT (B" + slot + ")";
+          if (sub) sub.textContent = "Won: +" + formatRupees(b.cashoutAmount - b.stake);
+        } else {
+          btn.disabled = true;
+          text.textContent = "IN FLIGHT";
+          if (sub) sub.textContent = "Waiting for next round...";
+        }
+      } else {
+        btn.disabled = true;
+        text.textContent = "ROUND SETTLED";
+        if (sub) sub.textContent = gameState === "CRASHED" ? "Flight crashed" : "Preparing round...";
+      }
+    });
+  }
+
+  function placeBet(slot) {
+    const stake = getStakeForSlot(slot);
+    if (savedState.virtualBalance < stake) {
+      showActionFeedback("INSUFFICIENT BALANCE // ADD FUNDS", "danger");
+      openWalletModal("deposit");
+      return;
+    }
+
+    savedState.virtualBalance -= stake;
+    savedState.career.totalVcStaked += stake;
+    bets[slot].stake = stake;
+    bets[slot].isPlaced = true;
+    bets[slot].isCashedOut = false;
+    bets[slot].cashoutAmount = 0;
+    bets[slot].cashoutMultiplier = 0.0;
+
+    saveState();
+    updatePlayerUIBalance();
+    updateActionButtons();
+    addFeedItem(savedState.callsign + " placed Bet " + slot + " of " + formatRupees(stake));
+
+    // Sync real bet to Firestore active_bets collection
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).set({
+        round: roundNumber,
+        slot: slot,
+        email: savedState.userEmail || "pilot@aerocrash.com",
+        callsign: savedState.callsign || "PILOT",
+        stake: stake,
+        targetMulti: 0,
+        cashoutValue: 0,
+        profit: 0,
+        hasCashedOut: false,
+        status: "ACTIVE",
+        placedAt: new Date()
+      }).catch(function () {});
+    }
+  }
+
+  function cancelBet(slot) {
+    if (!bets[slot].isPlaced || gameState !== "BETTING") return;
+    const refundAmt = bets[slot].stake;
+    savedState.virtualBalance += refundAmt;
+    savedState.career.totalVcStaked -= refundAmt;
+    bets[slot].isPlaced = false;
+
+    saveState();
+    updatePlayerUIBalance();
+    updateActionButtons();
+    addFeedItem(savedState.callsign + " cancelled Bet " + slot);
+
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).delete().catch(function () {});
+    }
+  }
+
+  function cashOut(slot) {
+    const b = bets[slot];
+    if (!b.isPlaced || b.isCashedOut || gameState !== "RUNNING") return;
+
+    b.isCashedOut = true;
+    b.cashoutMultiplier = liveMultiplier;
+    b.cashoutAmount = Math.floor(b.stake * b.cashoutMultiplier * 100) / 100;
+    const profit = b.cashoutAmount - b.stake;
+
+    savedState.virtualBalance += b.cashoutAmount;
+    savedState.career.roundsPlayed++;
+    savedState.career.roundsWon++;
+    savedState.career.totalVcWon += profit;
+    if (b.cashoutMultiplier > savedState.career.highestCashoutMulti) {
+      savedState.career.highestCashoutMulti = b.cashoutMultiplier;
+    }
+    if (b.cashoutAmount > savedState.career.bestPayoutVc) {
+      savedState.career.bestPayoutVc = b.cashoutAmount;
+    }
+
+    savedState.history.unshift({
+      round: roundNumber,
+      slot: slot,
+      stake: b.stake,
+      multiplier: b.cashoutMultiplier,
+      profit: profit,
+      status: "WIN",
+      time: new Date().toLocaleTimeString()
+    });
+
+    saveState();
+    updatePlayerUIBalance();
+    updateCareerTables();
+    renderPersonalHistoryLogs();
+    soundCashout();
+
+    // Sync cashout to Firestore active_bets
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const userKey = (savedState.userEmail || "guest_" + savedState.callsign).replace(/[^a-zA-Z0-9]/g, "_");
+      const betDocId = "r" + roundNumber + "_" + userKey + "_b" + slot;
+      window.AERO_FIREBASE.db.collection("active_bets").doc(betDocId).update({
+        hasCashedOut: true,
+        targetMulti: b.cashoutMultiplier,
+        cashoutValue: b.cashoutAmount,
+        profit: profit,
+        status: "CASHED_OUT"
+      }).catch(function () {});
+    }
+
+    if (DOM.playerResultBanner) {
+      DOM.playerResultBanner.textContent = "BET " + slot + " CASHOUT " + formatRupees(b.cashoutAmount) + " (" + b.cashoutMultiplier.toFixed(2) + "x)";
+      DOM.playerResultBanner.classList.add("active");
+    }
+
+    addFeedItem(savedState.callsign + " CASHOUT (B" + slot + ") @" + b.cashoutMultiplier.toFixed(2) + "x (+" + formatRupees(b.cashoutAmount) + ")", "cashout");
+    updateActionButtons();
+  }
+
+  function handleActionClickForSlot(slot) {
+    initAudio();
+    if (gameState === "BETTING" || gameState === "WAITING") {
+      if (bets[slot].isPlaced) cancelBet(slot);
+      else placeBet(slot);
+    } else if (gameState === "RUNNING") {
+      if (bets[slot].isPlaced && !bets[slot].isCashedOut) cashOut(slot);
+    }
+  }
+
+  window.addEventListener("keydown", function (e) {
+    if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+      e.preventDefault();
+      // Spacebar triggers primary active bet (or whichever is uncashed)
+      if (gameState === "RUNNING") {
+        if (bets[1].isPlaced && !bets[1].isCashedOut) cashOut(1);
+        else if (bets[2].isPlaced && !bets[2].isCashedOut) cashOut(2);
+      } else if (gameState === "BETTING") {
+        handleActionClickForSlot(activeBetSlotTab);
+      }
+    }
+  });
+
+  //====================================================================
+  // STATE MACHINE & TRANSITIONS
+  //====================================================================
+  function transitionTo(newState, fromRemote) {
+    gameState = newState;
+
+    if (DOM.statePill) DOM.statePill.textContent = newState;
+    if (DOM.stateDot) {
+      DOM.stateDot.className = "status-dot " + (newState === "RUNNING" ? "green" : newState === "BETTING" ? "amber" : "red");
+    }
+
+    switch (newState) {
+      case "BETTING":
+        if (!fromRemote) {
+          roundNumber++;
+          crashMultiplier = generateCrashPoint();
+        }
+        if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
+        if (DOM.statePill) DOM.statePill.textContent = "BETTING OPEN";
+
+        // Reset both bets for the new round
+        [1, 2].forEach(function (slot) {
+          bets[slot].isPlaced = false;
+          bets[slot].isCashedOut = false;
+          bets[slot].cashoutMultiplier = 0.0;
+          bets[slot].cashoutAmount = 0;
+        });
+
+        liveMultiplier = 1.00;
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        if (!fromRemote) roundStartTime = performance.now();
+        liveTrail = [];
+
+        subscribeToActiveBets(roundNumber);
+        if (!fromRemote) {
+          publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
+        }
+
+        if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
+        if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
+        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.remove("hidden");
+        if (DOM.playerResultBanner) DOM.playerResultBanner.classList.remove("active");
+
+        addFeedItem("ROUND #" + roundNumber + " BETS OPEN // TAKEOFF IN 8s");
+        updateActionButtons();
+        break;
+
+      case "LAUNCHING":
+        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
+        if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        soundLaunch();
+        if (!fromRemote) {
+          publishGlobalRoundState("LAUNCHING", roundNumber, crashMultiplier, Date.now());
+        }
+        updateActionButtons();
+        break;
+
+      case "RUNNING":
+        if (!fromRemote) launchStartTime = performance.now();
+        liveTrail = [];
+        if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
+        if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
+        if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
+        if (DOM.statePill) DOM.statePill.textContent = "IN PROGRESS";
+        if (!fromRemote) {
+          publishGlobalRoundState("RUNNING", roundNumber, crashMultiplier, Date.now());
+        }
+        updateActionButtons();
+        break;
+
+      case "CRASHED":
+        soundCrash();
+        if (!fromRemote) {
+          publishGlobalRoundState("CRASHED", roundNumber, liveMultiplier, Date.now());
+        }
+        renderSquadronTable();
+        addTickerBadge(liveMultiplier);
+        addFeedItem("FLIGHT CRASHED @ " + liveMultiplier.toFixed(2) + "x", "crashed");
+
+        if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
+        if (DOM.crashOverlay) DOM.crashOverlay.classList.remove("hidden");
+        if (DOM.crashMultiplier) DOM.crashMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.statePill) DOM.statePill.textContent = "FLEW AWAY";
+
+        // Settle uncashed bets for both slots
+        [1, 2].forEach(function (slot) {
+          const b = bets[slot];
+          if (b.isPlaced && !b.isCashedOut) {
+            savedState.career.roundsPlayed++;
+            savedState.career.roundsLost++;
+            savedState.career.totalVcLost += b.stake;
+            savedState.history.unshift({
+              round: roundNumber,
+              slot: slot,
+              stake: b.stake,
+              multiplier: 0,
+              profit: -b.stake,
+              status: "LOSS",
+              time: new Date().toLocaleTimeString()
+            });
+            showActionFeedback("BET " + slot + " FLEW AWAY — Lost " + formatRupees(b.stake), "danger");
+          }
+          b.isPlaced = false;
+        });
+
+        saveState();
+        updateCareerTables();
+        renderPersonalHistoryLogs();
+        updateActionButtons();
+
+        setTimeout(function () {
+          if (gameState === "CRASHED") transitionTo("RESULT");
+        }, CONFIG.TIMINGS.CRASHED_MS);
+        break;
+
+      case "RESULT":
+        updateCareerTables();
+        setTimeout(function () {
+          if (gameState === "RESULT") transitionTo("BETTING");
+        }, CONFIG.TIMINGS.RESULT_MS);
+        break;
+    }
+  }
+
+  //====================================================================
+  // CANVAS PHYSICS & FLIGHT RENDERING
   //====================================================================
   function resizeCanvas() {
     if (!DOM.canvas || !DOM.canvas.parentElement) return;
@@ -970,7 +1018,6 @@
     canvasCtx = DOM.canvas.getContext("2d");
     canvasCtx.scale(dpi, dpi);
   }
-
   window.addEventListener("resize", resizeCanvas);
 
   function createDebris(x, y) {
@@ -996,7 +1043,6 @@
     const cy = canvasHeight * 0.55;
 
     ctx.save();
-    // Clean subtle tactical radar concentric range rings
     ctx.strokeStyle = "rgba(255, 255, 255, 0.035)";
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 6]);
@@ -1007,7 +1053,6 @@
       ctx.stroke();
     });
 
-    // Crosshairs
     ctx.beginPath();
     ctx.moveTo(cx - 280, cy);
     ctx.lineTo(cx + 280, cy);
@@ -1015,7 +1060,6 @@
     ctx.lineTo(cx, cy + 280);
     ctx.stroke();
 
-    // Runway baseline at the bottom
     const startY = canvasHeight - 28;
     ctx.setLineDash([]);
     ctx.strokeStyle = "rgba(255, 255, 255, 0.06)";
@@ -1073,14 +1117,11 @@
     const startX = 35;
     const startY = canvasHeight - 28;
 
-    // DURING BETTING, LAUNCHING, OR WAITING:
-    // The aircraft sits parked calmly on the runway origin (NO premature flight or line!)
     if (gameState === "BETTING" || gameState === "WAITING" || gameState === "LAUNCHING") {
       drawPlane(ctx, startX, startY, 0);
       return;
     }
 
-    // ACTIVE FLIGHT IN PROGRESS (RUNNING STATE ONLY)
     if (gameState === "RUNNING") {
       const flightTime = Math.max(0, (performance.now() - launchStartTime) / 1000);
       
@@ -1095,17 +1136,13 @@
       const currX = startX + spanX * factorX;
       const currY = (startY - spanY * factorY) + microTurbulence;
 
-      // Add to live trail history
       if (liveTrail.length === 0) {
         liveTrail.push({ x: startX, y: startY });
       }
       liveTrail.push({ x: currX, y: currY });
 
-      // Render actual recorded trail with glowing fill
       if (liveTrail.length > 1) {
         ctx.save();
-
-        // 1. Subtle smooth illuminated gradient under the curve
         const fillGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
         fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.16)");
         fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.03)");
@@ -1122,7 +1159,6 @@
         ctx.fillStyle = fillGrad;
         ctx.fill();
 
-        // 2. High-glow luminous neon flight trail line
         ctx.beginPath();
         ctx.strokeStyle = "#ff6b22";
         ctx.lineWidth = 3.0;
@@ -1138,7 +1174,6 @@
         ctx.restore();
       }
 
-      // Compute heading angle
       let angle = -0.35;
       if (liveTrail.length >= 2) {
         const p1 = liveTrail[liveTrail.length - 2];
@@ -1149,7 +1184,6 @@
       drawPlane(ctx, currX, currY, angle);
 
     } else if (gameState === "CRASHED" || gameState === "RESULT") {
-      // Draw static trail up to crash point
       if (liveTrail.length > 1) {
         ctx.save();
         ctx.strokeStyle = "rgba(255, 107, 34, 0.4)";
@@ -1211,21 +1245,24 @@
       if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
       if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
 
-      // Auto cashout check
-      if (DOM.autoCheck && DOM.autoCheck.checked && isBetPlaced && !isCashedOut) {
-        const target = parseFloat(DOM.autoInput ? DOM.autoInput.value : 2.0);
-        if (!isNaN(target) && liveMultiplier >= target) cashOut();
+      // Auto cashout checks for both Bet 1 and Bet 2
+      if (DOM.autoCheck1 && DOM.autoCheck1.checked && bets[1].isPlaced && !bets[1].isCashedOut) {
+        const target1 = parseFloat(DOM.autoInput1 ? DOM.autoInput1.value : 2.0) || 2.0;
+        if (target1 > 1.0 && liveMultiplier >= target1) cashOut(1);
       }
 
-      updateSquadronDuringFlight(liveMultiplier);
+      if (DOM.autoCheck2 && DOM.autoCheck2.checked && bets[2].isPlaced && !bets[2].isCashedOut) {
+        const target2 = parseFloat(DOM.autoInput2 ? DOM.autoInput2.value : 3.0) || 3.0;
+        if (target2 > 1.0 && liveMultiplier >= target2) cashOut(2);
+      }
 
-      // Crash trigger (sudden, unpredictable)
+      // Crash trigger
       if (isManualCrashPending || liveMultiplier >= crashMultiplier) {
         isManualCrashPending = false;
         transitionTo("CRASHED");
       }
 
-      updateActionButton();
+      updateActionButtons();
     }
 
     renderCanvas();
@@ -1235,21 +1272,71 @@
   //====================================================================
   // WALLET & WITHDRAWAL CONTROLLER (WITH FIRESTORE & IP TRACKING)
   //====================================================================
+  function populateSavedBankDetails() {
+    if (savedState.bankDetails) {
+      if (DOM.withdrawBankName && savedState.bankDetails.bankName) DOM.withdrawBankName.value = savedState.bankDetails.bankName;
+      if (DOM.withdrawAccountHolder && savedState.bankDetails.holder) DOM.withdrawAccountHolder.value = savedState.bankDetails.holder;
+      if (DOM.withdrawAccountNumber && savedState.bankDetails.account) DOM.withdrawAccountNumber.value = savedState.bankDetails.account;
+      if (DOM.withdrawAccountNumberConfirm && savedState.bankDetails.account) DOM.withdrawAccountNumberConfirm.value = savedState.bankDetails.account;
+      if (DOM.withdrawIfscCode && savedState.bankDetails.ifsc) DOM.withdrawIfscCode.value = savedState.bankDetails.ifsc;
+    }
+    if (savedState.upiDetails) {
+      if (DOM.withdrawUpiName && savedState.upiDetails.upiName) DOM.withdrawUpiName.value = savedState.upiDetails.upiName;
+      if (DOM.withdrawUpiId && savedState.upiDetails.upiId) DOM.withdrawUpiId.value = savedState.upiDetails.upiId;
+    }
+  }
+
+  function saveCurrentBankDetailsToProfile() {
+    const isBank = DOM.typeOptBank && DOM.typeOptBank.classList.contains("active");
+    if (isBank) {
+      const bName = (DOM.withdrawBankName ? DOM.withdrawBankName.value : "").trim();
+      const bHolder = (DOM.withdrawAccountHolder ? DOM.withdrawAccountHolder.value : "").trim();
+      const bNum = (DOM.withdrawAccountNumber ? DOM.withdrawAccountNumber.value : "").trim();
+      const bIfsc = (DOM.withdrawIfscCode ? DOM.withdrawIfscCode.value : "").trim().toUpperCase();
+      savedState.bankDetails = {
+        bankName: bName,
+        holder: bHolder,
+        account: bNum,
+        ifsc: bIfsc
+      };
+    } else {
+      const uName = (DOM.withdrawUpiName ? DOM.withdrawUpiName.value : "").trim();
+      const uId = (DOM.withdrawUpiId ? DOM.withdrawUpiId.value : "").trim();
+      savedState.upiDetails = {
+        upiName: uName,
+        upiId: uId
+      };
+    }
+    saveState();
+
+    if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+      const uid = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser)
+        ? window.AERO_FIREBASE.auth.currentUser.uid
+        : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : null);
+      if (uid) {
+        window.AERO_FIREBASE.db.collection("users").doc(uid).set({
+          bankDetails: savedState.bankDetails || {},
+          upiDetails: savedState.upiDetails || {}
+        }, { merge: true }).catch(function (e) {
+          console.warn("[AeroCrash] Firestore bank save notice:", e.message);
+        });
+      }
+    }
+  }
+
   function openWalletModal(tab) {
     if (!DOM.modalWallet) return;
     DOM.modalWallet.classList.add("active");
-    updatePlayerUIBalance();
+    populateSavedBankDetails();
     switchWalletTab(tab || "deposit");
   }
 
   function closeWalletModal() {
-    if (!DOM.modalWallet) return;
-    DOM.modalWallet.classList.remove("active");
-    if (DOM.walletStatusAlert) DOM.walletStatusAlert.style.display = "none";
+    if (DOM.modalWallet) DOM.modalWallet.classList.remove("active");
   }
 
-  function switchWalletTab(tab) {
-    if (tab === "deposit") {
+  function switchWalletTab(tabName) {
+    if (tabName === "deposit") {
       if (DOM.tabWalletDeposit) DOM.tabWalletDeposit.classList.add("active");
       if (DOM.tabWalletWithdraw) DOM.tabWalletWithdraw.classList.remove("active");
       if (DOM.walletPanelDeposit) DOM.walletPanelDeposit.classList.add("active");
@@ -1265,10 +1352,7 @@
   function showWalletAlert(msg, isSuccess) {
     if (!DOM.walletStatusAlert) return;
     DOM.walletStatusAlert.textContent = msg;
-    DOM.walletStatusAlert.className = "deposit-status-alert active " + (isSuccess ? "success" : "error");
-    DOM.walletStatusAlert.style.display = "block";
-    DOM.walletStatusAlert.style.backgroundColor = isSuccess ? "var(--status-success-dim)" : "var(--status-danger-dim)";
-    DOM.walletStatusAlert.style.border = isSuccess ? "1px solid var(--status-success)" : "1px solid var(--status-danger)";
+    DOM.walletStatusAlert.className = "deposit-status-alert active";
     DOM.walletStatusAlert.style.color = isSuccess ? "var(--status-success)" : "var(--status-danger)";
   }
 
@@ -1279,13 +1363,18 @@
 
     if (DOM.btnOpenWallet) DOM.btnOpenWallet.addEventListener("click", function () { openWalletModal("deposit"); });
     if (DOM.cardWalletBottom) DOM.cardWalletBottom.addEventListener("click", function () { openWalletModal("deposit"); });
-    if (DOM.btnOpenDepositDossier) DOM.btnOpenDepositDossier.addEventListener("click", function () {
-      if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
-      openWalletModal("deposit");
-    });
     if (DOM.btnOpenWalletFromDossier) DOM.btnOpenWalletFromDossier.addEventListener("click", function () {
       if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
       openWalletModal("deposit");
+    });
+
+    // Auto-save bank & UPI details on input changes
+    const bankInputs = [DOM.withdrawBankName, DOM.withdrawAccountHolder, DOM.withdrawAccountNumber, DOM.withdrawAccountNumberConfirm, DOM.withdrawIfscCode, DOM.withdrawUpiName, DOM.withdrawUpiId];
+    bankInputs.forEach(function (inp) {
+      if (inp) {
+        inp.addEventListener("change", saveCurrentBankDetailsToProfile);
+        inp.addEventListener("blur", saveCurrentBankDetailsToProfile);
+      }
     });
 
     if (DOM.typeOptBank) {
@@ -1301,22 +1390,45 @@
       DOM.typeOptUpi.addEventListener("click", function () {
         DOM.typeOptUpi.classList.add("active");
         if (DOM.typeOptBank) DOM.typeOptBank.classList.remove("active");
-        if (DOM.payoutBankForm) DOM.payoutBankForm.style.display = "none";
         if (DOM.payoutUpiForm) DOM.payoutUpiForm.style.display = "flex";
+        if (DOM.payoutBankForm) DOM.payoutBankForm.style.display = "none";
       });
     }
 
-    if (DOM.withdrawPercentChips) {
-      DOM.withdrawPercentChips.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          const pct = parseInt(chip.getAttribute("data-percent"), 10);
-          const amt = Math.max(CONFIG.MIN_WITHDRAWAL, Math.floor((savedState.virtualBalance * pct) / 100));
-          if (DOM.withdrawAmountInput) DOM.withdrawAmountInput.value = amt;
-        });
+    // Dynamic sync for deposit inputs & buttons
+    if (DOM.modalDepositInput) {
+      DOM.modalDepositInput.addEventListener("input", function () {
+        const val = parseFloat(DOM.modalDepositInput.value) || 0;
+        if (DOM.modalDepositChips) {
+          DOM.modalDepositChips.forEach(function (c) {
+            const chipAmt = parseFloat(c.getAttribute("data-amt"));
+            if (chipAmt === val) c.classList.add("selected");
+            else c.classList.remove("selected");
+          });
+        }
+        if (DOM.btnModalDepositConfirm) {
+          DOM.btnModalDepositConfirm.textContent = "ADD " + formatRupees(val) + " TO WALLET";
+        }
       });
     }
 
-    // Modal Deposit Action (Saves Real-Money in Firestore)
+    if (DOM.depositInput) {
+      DOM.depositInput.addEventListener("input", function () {
+        const val = parseFloat(DOM.depositInput.value) || 0;
+        if (DOM.depositChips) {
+          DOM.depositChips.forEach(function (c) {
+            const chipAmt = parseFloat(c.getAttribute("data-amt"));
+            if (chipAmt === val) c.classList.add("selected");
+            else c.classList.remove("selected");
+          });
+        }
+        if (DOM.btnConfirmDeposit) {
+          DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(val) + " TO WALLET";
+        }
+      });
+    }
+
+    // Modal Deposit Action (Saves Real-Money in Firestore & LocalState)
     if (DOM.btnModalDepositConfirm) {
       DOM.btnModalDepositConfirm.addEventListener("click", function () {
         const amt = parseFloat(DOM.modalDepositInput ? DOM.modalDepositInput.value : 100) || 100;
@@ -1329,17 +1441,19 @@
         savedState.virtualBalance += amt;
         saveState();
         updatePlayerUIBalance();
-        showWalletAlert("Successfully added " + formatRupees(amt) + " to your Pilot Account! Real funds are stored in Firestore.", true);
+        showWalletAlert("Successfully added " + formatRupees(amt) + " to your Pilot Wallet!", true);
 
-        // Record in Firestore deposits and payment_logs with client IP
-        if (window.AERO_FIREBASE && window.AERO_FIREBASE.db && window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) {
-          const uid = window.AERO_FIREBASE.auth.currentUser.uid;
-          const txId = "DEP" + Date.now();
+        if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+          const uid = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) 
+            ? window.AERO_FIREBASE.auth.currentUser.uid 
+            : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : "pilot_user");
+          
+          const txId = "DEP_" + Date.now();
           window.AERO_FIREBASE.db.collection("deposits").doc(txId).set({
             txId: txId,
             uid: uid,
-            email: savedState.userEmail,
-            callsign: savedState.callsign,
+            email: savedState.userEmail || "pilot@aerocrash.com",
+            callsign: savedState.callsign || "PILOT",
             amount: amt,
             utrNumber: utr || "DIRECT_ONLINE",
             ip: clientIP,
@@ -1347,119 +1461,95 @@
             timestamp: new Date()
           }).catch(function () {});
 
-          window.AERO_FIREBASE.db.collection("payment_logs").add({
-            uid: uid,
-            callsign: savedState.callsign,
-            amount: amt,
-            type: "DEPOSIT",
-            ip: clientIP,
-            timestamp: new Date(),
-            status: "SUCCESS"
-          }).catch(function () {});
+          window.AERO_FIREBASE.db.collection("users").doc(uid).set({
+            balance: savedState.virtualBalance
+          }, { merge: true }).catch(function () {});
         }
-
-        addFeedItem(savedState.callsign + " deposited " + formatRupees(amt), "cashout");
       });
     }
 
-    // Modal Withdrawal Request (Saves Real-Money in Firestore)
+    // Modal Withdrawal Action
     if (DOM.btnSubmitWithdrawal) {
       DOM.btnSubmitWithdrawal.addEventListener("click", function () {
-        const withdrawAmt = parseFloat(DOM.withdrawAmountInput ? DOM.withdrawAmountInput.value : 0);
-        if (isNaN(withdrawAmt) || withdrawAmt < CONFIG.MIN_WITHDRAWAL) {
-          showWalletAlert("Minimum withdrawal amount is " + formatRupees(CONFIG.MIN_WITHDRAWAL), false);
+        const amt = parseFloat(DOM.withdrawAmountInput ? DOM.withdrawAmountInput.value : 50) || 50;
+        if (amt < CONFIG.MIN_WITHDRAWAL) {
+          showWalletAlert("Minimum withdrawal is " + formatRupees(CONFIG.MIN_WITHDRAWAL), false);
           return;
         }
-
-        if (withdrawAmt > savedState.virtualBalance) {
-          showWalletAlert("Insufficient wallet balance. You have " + formatRupees(savedState.virtualBalance), false);
+        if (amt > savedState.virtualBalance) {
+          showWalletAlert("Insufficient balance to withdraw " + formatRupees(amt), false);
           return;
         }
 
         const isBank = DOM.typeOptBank && DOM.typeOptBank.classList.contains("active");
-        let withdrawalDetails = {};
+        let details = {};
 
         if (isBank) {
-          const bankName = (DOM.withdrawBankName ? DOM.withdrawBankName.value : "").trim();
-          const holderName = (DOM.withdrawAccountHolder ? DOM.withdrawAccountHolder.value : "").trim();
-          const accNo = (DOM.withdrawAccountNumber ? DOM.withdrawAccountNumber.value : "").trim();
-          const accNoConfirm = (DOM.withdrawAccountNumberConfirm ? DOM.withdrawAccountNumberConfirm.value : "").trim();
-          const ifsc = (DOM.withdrawIfscCode ? DOM.withdrawIfscCode.value : "").trim().toUpperCase();
+          const bName = (DOM.withdrawBankName ? DOM.withdrawBankName.value : "").trim();
+          const bHolder = (DOM.withdrawAccountHolder ? DOM.withdrawAccountHolder.value : "").trim();
+          const bNum = (DOM.withdrawAccountNumber ? DOM.withdrawAccountNumber.value : "").trim();
+          const bNumConf = (DOM.withdrawAccountNumberConfirm ? DOM.withdrawAccountNumberConfirm.value : "").trim();
+          const bIfsc = (DOM.withdrawIfscCode ? DOM.withdrawIfscCode.value : "").trim().toUpperCase();
 
-          if (!holderName || !bankName || !accNo || !ifsc) {
-            showWalletAlert("Please fill in all bank details (Bank Name, Holder Name, Account Number, IFSC).", false);
+          if (!bHolder || !bNum || !bIfsc) {
+            showWalletAlert("Please fill Account Holder, Account Number, and IFSC Code.", false);
             return;
           }
-
-          if (accNo !== accNoConfirm) {
-            showWalletAlert("Account Number and Confirmation do not match.", false);
+          if (bNum !== bNumConf) {
+            showWalletAlert("Account numbers do not match.", false);
             return;
           }
-
-          if (ifsc.length < 9) {
-            showWalletAlert("Please enter a valid 11-character IFSC Code.", false);
-            return;
-          }
-
-          withdrawalDetails = {
-            method: "BANK_TRANSFER",
-            bankName: bankName,
-            accountHolder: holderName,
-            accountNumber: accNo,
-            ifsc: ifsc
-          };
+          details = { method: "BANK_TRANSFER", bankName: bName, holder: bHolder, account: bNum, ifsc: bIfsc };
         } else {
           const upiName = (DOM.withdrawUpiName ? DOM.withdrawUpiName.value : "").trim();
           const upiId = (DOM.withdrawUpiId ? DOM.withdrawUpiId.value : "").trim();
-
-          if (!upiName || !upiId || !upiId.includes("@")) {
-            showWalletAlert("Please provide your Name and a valid UPI ID (e.g. mobile@upi).", false);
+          if (!upiId || !upiId.includes("@")) {
+            showWalletAlert("Please enter a valid UPI ID (e.g. name@paytm).", false);
             return;
           }
-
-          withdrawalDetails = {
-            method: "UPI_TRANSFER",
-            accountHolder: upiName,
-            upiId: upiId
-          };
+          details = { method: "UPI", upiName: upiName, upiId: upiId };
         }
 
-        // Deduct from live balance
-        savedState.virtualBalance -= withdrawAmt;
+        saveCurrentBankDetailsToProfile();
+        savedState.virtualBalance -= amt;
         saveState();
         updatePlayerUIBalance();
 
-        const txId = "WTH" + Math.floor(100000 + Math.random() * 900000);
-        showWalletAlert("WITHDRAWAL SUBMITTED: " + formatRupees(withdrawAmt) + " request registered for " + (isBank ? "Bank IMPS" : "UPI") + ". Ref: #" + txId, true);
+        showWalletAlert("Withdrawal Request of " + formatRupees(amt) + " Submitted! Payout is being routed.", true);
 
-        // Record in Firestore withdrawals collection with user IP
-        if (window.AERO_FIREBASE && window.AERO_FIREBASE.db && window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) {
-          const uid = window.AERO_FIREBASE.auth.currentUser.uid;
-          window.AERO_FIREBASE.db.collection("withdrawals").doc(txId).set({
-            txId: txId,
+        if (window.AERO_FIREBASE && window.AERO_FIREBASE.db) {
+          const uid = (window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) 
+            ? window.AERO_FIREBASE.auth.currentUser.uid 
+            : (savedState.userEmail ? savedState.userEmail.replace(/[^a-zA-Z0-9]/g, "_") : "pilot_user");
+          
+          const wId = "WD_" + Date.now();
+          window.AERO_FIREBASE.db.collection("withdrawals").doc(wId).set({
+            wId: wId,
             uid: uid,
             email: savedState.userEmail,
             callsign: savedState.callsign,
-            amount: withdrawAmt,
-            details: withdrawalDetails,
+            amount: amt,
+            details: details,
             ip: clientIP,
             status: "PENDING",
             timestamp: new Date()
           }).catch(function () {});
 
-          window.AERO_FIREBASE.db.collection("payment_logs").add({
-            uid: uid,
-            callsign: savedState.callsign,
-            amount: withdrawAmt,
-            type: "WITHDRAWAL",
-            method: withdrawalDetails.method,
-            ip: clientIP,
-            timestamp: new Date(),
-            status: "PENDING"
-          }).catch(function () {});
+          window.AERO_FIREBASE.db.collection("users").doc(uid).set({
+            balance: savedState.virtualBalance
+          }, { merge: true }).catch(function () {});
         }
+      });
+    }
 
-        addFeedItem(savedState.callsign + " requested withdrawal of " + formatRupees(withdrawAmt), "cashout");
+    // Quick percentages for withdrawal
+    if (DOM.withdrawPercentChips) {
+      DOM.withdrawPercentChips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          const pct = parseFloat(chip.getAttribute("data-percent")) || 100;
+          const amt = Math.floor((savedState.virtualBalance * (pct / 100)) * 100) / 100;
+          if (DOM.withdrawAmountInput) DOM.withdrawAmountInput.value = Math.max(50, amt);
+        });
       });
     }
 
@@ -1468,18 +1558,21 @@
         chip.addEventListener("click", function () {
           DOM.modalDepositChips.forEach(function (c) { c.classList.remove("selected"); });
           chip.classList.add("selected");
-          const amt = chip.getAttribute("data-amt");
+          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
           if (DOM.modalDepositInput) DOM.modalDepositInput.value = amt;
-          if (DOM.btnModalDepositConfirm) DOM.btnModalDepositConfirm.textContent = "ADD ₹" + amt + " TO WALLET";
+          if (DOM.btnModalDepositConfirm) DOM.btnModalDepositConfirm.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
         });
       });
     }
 
-    if (DOM.modalPaymentMethods) {
-      DOM.modalPaymentMethods.forEach(function (method) {
-        method.addEventListener("click", function () {
-          DOM.modalPaymentMethods.forEach(function (m) { m.classList.remove("selected"); });
-          method.classList.add("selected");
+    if (DOM.depositChips) {
+      DOM.depositChips.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          DOM.depositChips.forEach(function (c) { c.classList.remove("selected"); });
+          chip.classList.add("selected");
+          const amt = parseFloat(chip.getAttribute("data-amt")) || 100;
+          if (DOM.depositInput) DOM.depositInput.value = amt;
+          if (DOM.btnConfirmDeposit) DOM.btnConfirmDeposit.textContent = "ADD " + formatRupees(amt) + " TO WALLET";
         });
       });
     }
@@ -1496,9 +1589,7 @@
     if (DOM.dossierRoundsWon) DOM.dossierRoundsWon.textContent = savedState.career.roundsWon;
     if (DOM.dossierRoundsLost) DOM.dossierRoundsLost.textContent = savedState.career.roundsLost;
 
-    const rate = savedState.career.roundsPlayed > 0
-      ? ((savedState.career.roundsWon / savedState.career.roundsPlayed) * 100).toFixed(1)
-      : "0.0";
+    const rate = savedState.career.roundsPlayed > 0 ? ((savedState.career.roundsWon / savedState.career.roundsPlayed) * 100).toFixed(1) : "0.0";
     if (DOM.dossierWinRate) DOM.dossierWinRate.textContent = rate + "%";
     if (DOM.dossierHighestMulti) DOM.dossierHighestMulti.textContent = savedState.career.highestCashoutMulti.toFixed(2) + "x";
     if (DOM.dossierBestPayout) DOM.dossierBestPayout.textContent = formatRupees(savedState.career.bestPayoutVc);
@@ -1512,15 +1603,13 @@
     }
 
     let html = "";
-    savedState.history.slice(0, 20).forEach(function (log) {
-      const isWin = log.status === "WIN";
+    savedState.history.slice(0, 20).forEach(function (h) {
+      const isWin = h.status === "WIN";
       html += '<div class="personal-log-row ' + (isWin ? "win" : "loss") + '">' +
-        '<span>ROUND #' + log.round + '</span>' +
-        '<span>' + formatRupees(log.stake) + '</span>' +
-        '<span>' + (log.multiplier > 0 ? log.multiplier.toFixed(2) + "x" : "Crashed") + '</span>' +
-        '<span style="color:' + (isWin ? "var(--status-success)" : "var(--status-danger)") + '; font-weight:700;">' +
-        (isWin ? "+" : "") + formatRupees(log.profit) +
-        '</span>' +
+        '<div><strong>ROUND #' + h.round + '</strong> (B' + (h.slot || 1) + ')<br><small>' + (h.time || "") + '</small></div>' +
+        '<div>Stake: ' + formatRupees(h.stake) + '</div>' +
+        '<div style="text-align:right;"><strong>' + (isWin ? "+" + formatRupees(h.profit) : "-" + formatRupees(h.stake)) + '</strong><br>' +
+        '<small>' + (isWin ? h.multiplier.toFixed(2) + "x" : "FLEW AWAY") + '</small></div>' +
         '</div>';
     });
     DOM.personalLogsContainer.innerHTML = html;
@@ -1559,7 +1648,6 @@
     if (DOM.btnRefreshAdminWithdrawals) DOM.btnRefreshAdminWithdrawals.addEventListener("click", fetchAdminWithdrawals);
   }
 
-  // Fetch all registered users from Firestore for Admin
   function fetchAdminUsers() {
     if (!DOM.adminUsersTable || !window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
     const tbody = DOM.adminUsersTable.querySelector("tbody");
@@ -1586,8 +1674,7 @@
         });
         tbody.innerHTML = html;
       })
-      .catch(function (err) {
-        // Fallback: If Firestore rules restrict collection query, display active session telemetry
+      .catch(function () {
         tbody.innerHTML = '<tr>' +
           '<td style="color:var(--accent-amber); font-weight:700;">' + (savedState.callsign || "PILOT") + ' (ACTIVE)</td>' +
           '<td>' + (savedState.userEmail || "pilot@aerocrash.com") + '</td>' +
@@ -1598,7 +1685,6 @@
       });
   }
 
-  // Fetch all withdrawal requests from Firestore for Admin Approval
   function fetchAdminWithdrawals() {
     if (!DOM.adminWithdrawalsTable || !window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
     const tbody = DOM.adminWithdrawalsTable.querySelector("tbody");
@@ -1634,7 +1720,6 @@
         });
         tbody.innerHTML = html;
 
-        // Bind Approve / Reject buttons
         tbody.querySelectorAll(".btn-admin-approve").forEach(function (btn) {
           btn.addEventListener("click", function () {
             const docId = btn.getAttribute("data-doc");
@@ -1657,13 +1742,12 @@
               status: "REJECTED",
               rejectedAt: new Date()
             }).then(function () {
-              // Refund user balance
               if (uid && refundAmt > 0) {
-                const userDoc = window.AERO_FIREBASE.db.collection("users").doc(uid);
-                userDoc.get().then(function (d) {
-                  if (d.exists) {
-                    const curr = d.data().balance || 0;
-                    userDoc.update({ balance: curr + refundAmt });
+                const userRef = window.AERO_FIREBASE.db.collection("users").doc(uid);
+                userRef.get().then(function (uDoc) {
+                  if (uDoc.exists) {
+                    const curBal = uDoc.data().balance || 0;
+                    userRef.update({ balance: curBal + refundAmt });
                   }
                 });
               }
@@ -1672,8 +1756,8 @@
           });
         });
       })
-      .catch(function (err) {
-        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--status-danger);">Error: ' + err.message + '</td></tr>';
+      .catch(function () {
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">No pending withdrawal requests.</td></tr>';
       });
   }
 
@@ -1681,7 +1765,115 @@
   // EVENT LISTENERS & SETUP
   //====================================================================
   function setupEventListeners() {
-    if (DOM.btnAction) DOM.btnAction.addEventListener("click", handleActionClick);
+    // Bet Slot Tabs Switcher
+    if (DOM.tabSlot1 && DOM.tabSlot2) {
+      DOM.tabSlot1.addEventListener("click", function () {
+        activeBetSlotTab = 1;
+        DOM.tabSlot1.classList.add("active");
+        DOM.tabSlot2.classList.remove("active");
+        if (DOM.betCard1) DOM.betCard1.classList.add("active");
+        if (DOM.betCard2 && !isDualViewMode) DOM.betCard2.classList.remove("active");
+      });
+
+      DOM.tabSlot2.addEventListener("click", function () {
+        activeBetSlotTab = 2;
+        DOM.tabSlot2.classList.add("active");
+        DOM.tabSlot1.classList.remove("active");
+        if (DOM.betCard2) DOM.betCard2.classList.add("active");
+        if (DOM.betCard1 && !isDualViewMode) DOM.betCard1.classList.remove("active");
+      });
+    }
+
+    if (DOM.btnToggleDual) {
+      DOM.btnToggleDual.addEventListener("click", function () {
+        isDualViewMode = !isDualViewMode;
+        DOM.btnToggleDual.classList.toggle("active", isDualViewMode);
+        if (DOM.betPanelsWrapper) {
+          DOM.betPanelsWrapper.classList.toggle("dual-mode", isDualViewMode);
+        }
+        if (isDualViewMode) {
+          if (DOM.betCard1) DOM.betCard1.classList.add("active");
+          if (DOM.betCard2) DOM.betCard2.classList.add("active");
+        } else {
+          if (activeBetSlotTab === 1) {
+            if (DOM.betCard1) DOM.betCard1.classList.add("active");
+            if (DOM.betCard2) DOM.betCard2.classList.remove("active");
+          } else {
+            if (DOM.betCard2) DOM.betCard2.classList.add("active");
+            if (DOM.betCard1) DOM.betCard1.classList.remove("active");
+          }
+        }
+      });
+    }
+
+    // Action Buttons for Slot 1 and Slot 2
+    if (DOM.btnAction1) DOM.btnAction1.addEventListener("click", function () { handleActionClickForSlot(1); });
+    if (DOM.btnAction2) DOM.btnAction2.addEventListener("click", function () { handleActionClickForSlot(2); });
+
+    // Steppers for Slot 1
+    if (DOM.btnStakeInc1 && DOM.stakeInput1) {
+      DOM.btnStakeInc1.addEventListener("click", function () {
+        let val = parseFloat(DOM.stakeInput1.value) || 10;
+        val = Math.min(CONFIG.MAX_STAKE, val + 10);
+        DOM.stakeInput1.value = val.toFixed(2);
+        updateActionButtons();
+      });
+    }
+    if (DOM.btnStakeDec1 && DOM.stakeInput1) {
+      DOM.btnStakeDec1.addEventListener("click", function () {
+        let val = parseFloat(DOM.stakeInput1.value) || 10;
+        val = Math.max(CONFIG.MIN_STAKE, val - 10);
+        DOM.stakeInput1.value = val.toFixed(2);
+        updateActionButtons();
+      });
+    }
+
+    // Steppers for Slot 2
+    if (DOM.btnStakeInc2 && DOM.stakeInput2) {
+      DOM.btnStakeInc2.addEventListener("click", function () {
+        let val = parseFloat(DOM.stakeInput2.value) || 10;
+        val = Math.min(CONFIG.MAX_STAKE, val + 10);
+        DOM.stakeInput2.value = val.toFixed(2);
+        updateActionButtons();
+      });
+    }
+    if (DOM.btnStakeDec2 && DOM.stakeInput2) {
+      DOM.btnStakeDec2.addEventListener("click", function () {
+        let val = parseFloat(DOM.stakeInput2.value) || 10;
+        val = Math.max(CONFIG.MIN_STAKE, val - 10);
+        DOM.stakeInput2.value = val.toFixed(2);
+        updateActionButtons();
+      });
+    }
+
+    // Quick chips for Slot 1
+    if (DOM.chips1) {
+      DOM.chips1.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          DOM.chips1.forEach(function (c) { c.classList.remove("active"); });
+          chip.classList.add("active");
+          const val = chip.getAttribute("data-val");
+          if (DOM.stakeInput1) DOM.stakeInput1.value = parseFloat(val).toFixed(2);
+          updateActionButtons();
+        });
+      });
+    }
+
+    // Quick chips for Slot 2
+    if (DOM.chips2) {
+      DOM.chips2.forEach(function (chip) {
+        chip.addEventListener("click", function () {
+          DOM.chips2.forEach(function (c) { c.classList.remove("active"); });
+          chip.classList.add("active");
+          const val = chip.getAttribute("data-val");
+          if (DOM.stakeInput2) DOM.stakeInput2.value = parseFloat(val).toFixed(2);
+          updateActionButtons();
+        });
+      });
+    }
+
+    if (DOM.stakeInput1) DOM.stakeInput1.addEventListener("input", updateActionButtons);
+    if (DOM.stakeInput2) DOM.stakeInput2.addEventListener("input", updateActionButtons);
 
     if (DOM.tabCtrlBetting && DOM.tabCtrlHistory) {
       DOM.tabCtrlBetting.addEventListener("click", function () {
@@ -1700,51 +1892,33 @@
       });
     }
 
-    if (DOM.quickStakeChips) {
-      DOM.quickStakeChips.forEach(function (chip) {
-        chip.addEventListener("click", function () {
-          DOM.quickStakeChips.forEach(function (c) { c.classList.remove("active"); });
-          chip.classList.add("active");
-          const val = chip.getAttribute("data-value");
-          if (DOM.stakeInput) DOM.stakeInput.value = val;
-          updateActionButton();
-        });
+    if (DOM.btnClearAuto1) {
+      DOM.btnClearAuto1.addEventListener("click", function () {
+        if (DOM.autoInput1) DOM.autoInput1.value = "2.00";
       });
     }
-
-    if (DOM.btnStakeInc) {
-      DOM.btnStakeInc.addEventListener("click", function () {
-        let val = getCurrentStakeInput() + 10;
-        if (DOM.stakeInput) DOM.stakeInput.value = Math.min(CONFIG.MAX_STAKE, val);
-        updateActionButton();
-      });
-    }
-
-    if (DOM.btnStakeDec) {
-      DOM.btnStakeDec.addEventListener("click", function () {
-        let val = getCurrentStakeInput() - 10;
-        if (DOM.stakeInput) DOM.stakeInput.value = Math.max(CONFIG.MIN_STAKE, val);
-        updateActionButton();
-      });
-    }
-
-    if (DOM.btnClearAutocashout) {
-      DOM.btnClearAutocashout.addEventListener("click", function () {
-        if (DOM.autoInput) DOM.autoInput.value = "2.00";
+    if (DOM.btnClearAuto2) {
+      DOM.btnClearAuto2.addEventListener("click", function () {
+        if (DOM.autoInput2) DOM.autoInput2.value = "3.00";
       });
     }
 
     if (DOM.btnSoundToggle) {
       DOM.btnSoundToggle.addEventListener("click", function () {
         savedState.audioEnabled = !savedState.audioEnabled;
-        DOM.btnSoundToggle.style.color = savedState.audioEnabled ? "var(--text-main)" : "var(--status-danger)";
+        if (savedState.audioEnabled) initAudio();
+        DOM.btnSoundToggle.style.opacity = savedState.audioEnabled ? "1" : "0.4";
+        saveState();
       });
     }
 
     if (DOM.btnFullscreenToggle) {
       DOM.btnFullscreenToggle.addEventListener("click", function () {
-        if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function () {});
-        else document.exitFullscreen().catch(function () {});
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(function () {});
+        } else {
+          document.exitFullscreen().catch(function () {});
+        }
       });
     }
 
@@ -1753,47 +1927,43 @@
         if (DOM.modalOnboarding) DOM.modalOnboarding.classList.add("active");
       });
     }
-    if (DOM.btnRulesClose) DOM.btnRulesClose.addEventListener("click", function () {
-      if (DOM.modalOnboarding) DOM.modalOnboarding.classList.remove("active");
-    });
-    if (DOM.btnOnboardingDismiss) DOM.btnOnboardingDismiss.addEventListener("click", function () {
-      if (DOM.modalOnboarding) DOM.modalOnboarding.classList.remove("active");
-    });
+    if (DOM.btnRulesClose) {
+      DOM.btnRulesClose.addEventListener("click", function () {
+        if (DOM.modalOnboarding) DOM.modalOnboarding.classList.remove("active");
+      });
+    }
+    if (DOM.btnOnboardingDismiss) {
+      DOM.btnOnboardingDismiss.addEventListener("click", function () {
+        if (DOM.modalOnboarding) DOM.modalOnboarding.classList.remove("active");
+      });
+    }
 
     if (DOM.profileChip) {
       DOM.profileChip.addEventListener("click", function () {
-        if (DOM.modalProfile) {
-          updateCareerTables();
-          DOM.modalProfile.classList.add("active");
-        }
+        updateCareerTables();
+        if (DOM.modalProfile) DOM.modalProfile.classList.add("active");
       });
     }
-    if (DOM.btnProfileClose) DOM.btnProfileClose.addEventListener("click", function () {
-      if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
-    });
-    if (DOM.btnDossierCloseBottom) DOM.btnDossierCloseBottom.addEventListener("click", function () {
-      if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
-    });
-
+    if (DOM.btnProfileClose) {
+      DOM.btnProfileClose.addEventListener("click", function () {
+        if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
+      });
+    }
+    if (DOM.btnDossierCloseBottom) {
+      DOM.btnDossierCloseBottom.addEventListener("click", function () {
+        if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
+      });
+    }
     if (DOM.btnResetStats) {
       DOM.btnResetStats.addEventListener("click", function () {
-        if (confirm("Reset pilot career telemetry stats?")) {
-          savedState.career = {
-            roundsPlayed: 0,
-            roundsWon: 0,
-            roundsLost: 0,
-            totalVcStaked: 0,
-            totalVcWon: 0,
-            totalVcLost: 0,
-            highestCashoutMulti: 0.0,
-            bestPayoutVc: 0,
-          };
-          savedState.history = [];
-          saveState();
-          updateCareerTables();
-          renderPersonalHistoryLogs();
-          updatePlayerUIBalance();
-        }
+        savedState.career = {
+          roundsPlayed: 0, roundsWon: 0, roundsLost: 0, totalVcStaked: 0, totalVcWon: 0, totalVcLost: 0,
+          highestCashoutMulti: 0.0, bestPayoutVc: 0
+        };
+        savedState.history = [];
+        saveState();
+        updateCareerTables();
+        renderPersonalHistoryLogs();
       });
     }
 
@@ -1845,8 +2015,9 @@
         if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput.value);
           if (!isNaN(manual) && manual >= 1.01) {
-            crashMultiplier = manual;
+            crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
             if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+            publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
           }
         }
       });
@@ -1855,11 +2026,13 @@
       DOM.gmOverrideEnabled.addEventListener("change", function () {
         if (DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 2.5) || 2.5;
-          crashMultiplier = manual;
+          crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
           if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
         } else {
           crashMultiplier = generateCrashPoint();
           if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          publishGlobalRoundState(gameState, roundNumber, crashMultiplier, Date.now());
         }
       });
     }
@@ -1919,7 +2092,6 @@
       });
     }
 
-    // Support submitting by pressing Enter key on any auth input field
     const authInputs = [DOM.authCallsignInput, DOM.authEmailInput, DOM.authPasswordInput];
     authInputs.forEach(function (inp) {
       if (inp) {
@@ -1956,7 +2128,6 @@
       return;
     }
 
-    // If user enters just a username (e.g. 'ayan' or 'maverick'), normalize to email
     let normalizedEmail = rawEmail;
     if (!normalizedEmail.includes("@")) {
       normalizedEmail = normalizedEmail.toLowerCase().replace(/[^a-z0-9._-]/g, "") + "@aerocrash.com";
@@ -1977,7 +2148,6 @@
       }
     }
 
-    // Fallback if Firebase not configured
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.auth) {
       savedState.isLoggedIn = true;
       savedState.userEmail = normalizedEmail;
@@ -2044,7 +2214,6 @@
     savedState.userRole = role;
     savedState.isLoggedIn = true;
 
-    // Log IP and Login in Firestore
     if (db) {
       db.collection("login_logs").add({
         uid: uid,
@@ -2052,11 +2221,14 @@
         ip: clientIP,
         authMode: authMode,
         timestamp: new Date()
-      }).catch(function () {});
+      }).catch(function (e) {
+        console.warn("[AeroCrash] Login audit log:", e.message);
+      });
     }
 
     if (!db) {
       saveState();
+      populateSavedBankDetails();
       completeLoginRouting(authMode);
       return;
     }
@@ -2067,31 +2239,55 @@
         const data = doc.data();
         savedState.callsign = data.callsign || customCallsign || savedState.callsign;
         savedState.virtualBalance = typeof data.balance === "number" ? data.balance : savedState.virtualBalance;
+        if (data.bankDetails) savedState.bankDetails = Object.assign(savedState.bankDetails || {}, data.bankDetails);
+        if (data.upiDetails) savedState.upiDetails = Object.assign(savedState.upiDetails || {}, data.upiDetails);
         if (data.career) savedState.career = Object.assign(savedState.career, data.career);
+
         userRef.set({
-          lastIP: clientIP,
-          lastLoginAt: new Date()
-        }, { merge: true }).catch(function () {});
-      } else {
-        savedState.callsign = customCallsign || email.split("@")[0].toUpperCase() || "MAVERICK";
-        savedState.virtualBalance = CONFIG.INITIAL_BALANCE;
-        userRef.set({
+          uid: uid,
           email: email,
           callsign: savedState.callsign,
           role: role,
           balance: savedState.virtualBalance,
+          bankDetails: savedState.bankDetails || {},
+          upiDetails: savedState.upiDetails || {},
+          lastIP: clientIP,
+          lastLoginAt: new Date()
+        }, { merge: true }).then(function () {
+          console.log("[AeroCrash] Firestore profile synced for user:", uid);
+        }).catch(function (e) {
+          console.warn("[AeroCrash] Firestore user sync notice:", e.message);
+        });
+      } else {
+        savedState.callsign = customCallsign || email.split("@")[0].toUpperCase() || "MAVERICK";
+        savedState.virtualBalance = CONFIG.INITIAL_BALANCE;
+        userRef.set({
+          uid: uid,
+          email: email,
+          callsign: savedState.callsign,
+          role: role,
+          balance: savedState.virtualBalance,
+          bankDetails: savedState.bankDetails || {},
+          upiDetails: savedState.upiDetails || {},
           createdAt: new Date(),
           lastIP: clientIP,
+          lastLoginAt: new Date(),
           career: savedState.career
-        }).catch(function () {});
+        }).then(function () {
+          console.log("[AeroCrash] New Pilot account registered in Firestore:", uid);
+        }).catch(function (e) {
+          console.error("[AeroCrash] Firestore new user creation error:", e);
+        });
       }
 
       saveState();
+      populateSavedBankDetails();
       listenToUserDoc(uid);
       completeLoginRouting(authMode);
     }).catch(function (err) {
-      console.warn("Backend sync error:", err);
+      console.warn("[AeroCrash] Backend sync error, falling back to local state:", err);
       saveState();
+      populateSavedBankDetails();
       completeLoginRouting(authMode);
     });
   }
@@ -2146,6 +2342,7 @@
     setupAdminPortal();
     initGlobalMultiplayerSync();
     resizeCanvas();
+    updateActionButtons();
 
     let splashProgress = 0;
     const splashInterval = setInterval(function () {
