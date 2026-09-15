@@ -214,7 +214,7 @@
   let userDocUnsubscribe = null;
 
   // Live Flight Trajectory Points (UNPREDICTABLE)
-  let liveTrail = [];
+  let liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
 
   //====================================================================
   // DOM ELEMENTS CACHE
@@ -478,23 +478,31 @@
   //====================================================================
   // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE
   //====================================================================
+  const MAX_POSSIBLE_MULTIPLIER = 200.00; // Hard ceiling at 200.00x
+
   function generateCrashPoint() {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
       const manual = parseFloat(DOM.gmTargetInput.value);
-      if (!isNaN(manual) && manual >= 1.01) return manual;
+      if (!isNaN(manual) && manual >= 1.01) {
+        return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(manual * 100) / 100);
+      }
     }
     const r = Math.random();
-    if (r < 0.05) return 1.00;
-    if (r < 0.48) return Math.floor((1.01 + Math.random() * 1.5) * 100) / 100;
-    if (r < 0.82) return Math.floor((2.00 + Math.random() * 4.2) * 100) / 100;
-    if (r < 0.96) return Math.floor((6.00 + Math.random() * 18.0) * 100) / 100;
-    return Math.floor((20.0 + Math.random() * 95.0) * 100) / 100;
+    let point = 1.00;
+    if (r < 0.05) point = 1.00;
+    else if (r < 0.48) point = Math.floor((1.01 + Math.random() * 1.5) * 100) / 100;
+    else if (r < 0.82) point = Math.floor((2.00 + Math.random() * 4.2) * 100) / 100;
+    else if (r < 0.95) point = Math.floor((6.00 + Math.random() * 18.0) * 100) / 100;
+    else point = Math.floor((20.0 + Math.random() * 160.0) * 100) / 100;
+    
+    return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.max(1.00, point));
   }
 
   function calculateMultiplier(elapsedSec) {
     // Natural continuous upward acceleration: M = e^(0.058 * t^1.14)
     const exponent = 0.058 * Math.pow(elapsedSec, 1.14);
-    return Math.max(1.00, Math.exp(exponent));
+    const multi = Math.max(1.00, Math.exp(exponent));
+    return Math.min(MAX_POSSIBLE_MULTIPLIER, multi);
   }
 
   function transitionTo(newState) {
@@ -518,7 +526,7 @@
         crashMultiplier = generateCrashPoint();
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         roundStartTime = performance.now();
-        liveTrail = [];
+        liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
 
         squadronPilots = generateSquadron(fleetCount);
         renderSquadronTable(true);
@@ -542,7 +550,7 @@
 
       case "RUNNING":
         launchStartTime = performance.now();
-        liveTrail = [];
+        liveTrail = [{ x: 35, y: canvasHeight ? canvasHeight - 28 : 280 }];
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
@@ -954,29 +962,51 @@
       const flightTime = Math.max(0, (performance.now() - launchStartTime) / 1000);
       
       // Horizontal and vertical logarithmic progression that stays fluidly within bounds
-      const spanX = canvasWidth * 0.74;
-      const spanY = canvasHeight * 0.70;
+      const spanX = canvasWidth * 0.76;
+      const spanY = canvasHeight * 0.72;
       
       const t = flightTime;
-      const factorX = 1 - Math.exp(-0.14 * t);
-      const factorY = Math.pow(factorX, 1.35);
-      const microTurbulence = Math.sin(t * 3.8) * 3;
+      const factorX = 1 - Math.exp(-0.11 * t);
+      const factorY = Math.pow(factorX, 1.25);
+      const microTurbulence = Math.sin(t * 3.6) * (1.5 + Math.min(2.5, t * 0.15));
 
       const currX = startX + spanX * factorX;
       const currY = (startY - spanY * factorY) + microTurbulence;
 
-      // Add to live trail history
+      // Add to live trail history (Full continuous unbroken trail from runway)
+      if (liveTrail.length === 0) {
+        liveTrail.push({ x: startX, y: startY });
+      }
       liveTrail.push({ x: currX, y: currY });
-      if (liveTrail.length > 200) liveTrail.shift();
 
-      // Render actual recorded trail
+      // Render actual recorded trail with glowing fill
       if (liveTrail.length > 1) {
         ctx.save();
-        ctx.strokeStyle = "#ff7300";
-        ctx.lineWidth = 2.5;
-        ctx.shadowColor = "#ff7300";
-        ctx.shadowBlur = 8;
+
+        // 1. Subtle illuminated gradient under the curve
+        const fillGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
+        fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.20)");
+        fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.04)");
+        fillGrad.addColorStop(1, "rgba(255, 107, 34, 0.0)");
+
         ctx.beginPath();
+        ctx.moveTo(startX, startY);
+        for (let i = 0; i < liveTrail.length; i++) {
+          ctx.lineTo(liveTrail[i].x, liveTrail[i].y);
+        }
+        ctx.lineTo(currX, startY);
+        ctx.closePath();
+        ctx.fillStyle = fillGrad;
+        ctx.fill();
+
+        // 2. High-glow luminous neon flight trail line
+        ctx.beginPath();
+        ctx.strokeStyle = "#ff6b22";
+        ctx.lineWidth = 3.0;
+        ctx.shadowColor = "#ff7700";
+        ctx.shadowBlur = 10;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
         for (let i = 1; i < liveTrail.length; i++) {
           ctx.lineTo(liveTrail[i].x, liveTrail[i].y);
@@ -999,7 +1029,7 @@
       // Draw static trail up to crash point
       if (liveTrail.length > 1) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 115, 0, 0.4)";
+        ctx.strokeStyle = "rgba(255, 107, 34, 0.4)";
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
