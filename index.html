@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>AERO</title>
+  <meta name="description" content="Aero Crash - Polished Virtual Crash Game Prototype">
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg">
+
+  <!-- Firebase Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <script src="firebase-config.js"></script>
+</head>
+
+<body>
+
+  <!-- ========================================== -->
+  <!-- 01. SPLASH SCREEN                          -->
+  <!-- ========================================== -->
+  <section id="screen-splash" class="app-screen active" aria-label="Loading Screen">
+    <div class="splash-container">
+      <div class="splash-emblem">
+        <svg class="splash-logo" viewBox="0 0 64 64" aria-hidden="true">
+          <polygon
+            points="32,4 37,24 58,34 58,40 37,36 37,50 46,55 46,60 32,57 18,60 18,55 27,50 27,36 6,40 6,34 27,24" />
+        </svg>
+      </div>
+      <h1 class="splash-brand">AERO<span style="color: var(--accent-amber);">CRASH</span></h1>
+      <p class="splash-subtitle">TACTICAL FLIGHT</p>
+
+      <div class="splash-progress-track">
+        <div id="splash-bar" class="splash-progress-bar" style="width: 0%;"></div>
+      </div>
+
+      <div id="splash-status" class="splash-status">INITIALIZING FLIGHT ENGINE...</div>
+      <div class="splash-disclaimer">SECURE ENGINE</div>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- 02. FIREBASE AUTHENTICATION SCREEN         -->
+  <!-- ========================================== -->
+  <section id="screen-auth" class="app-screen" aria-label="Player Sign In">
+    <div class="auth-card">
+      <header class="auth-header">
+        <h1 id="auth-main-title">OPERATOR ACCESS</h1>
+        <p id="auth-main-desc">Sign in or create your Pilot ID to access the flight deck.</p>
+      </header>
+
+      <div class="auth-tabs" role="tablist">
+        <button type="button" class="auth-tab-btn active" id="tab-auth-login" data-mode="login">PILOT LOGIN</button>
+        <button type="button" class="auth-tab-btn" id="tab-auth-register" data-mode="register">CREATE ID</button>
+        <button type="button" class="auth-tab-btn admin-tab" id="tab-auth-admin" data-mode="admin">ADMIN PORTAL</button>
+      </div>
+
+      <div id="auth-status-box" class="auth-status-box"></div>
+
+      <form id="firebase-auth-form" class="auth-form" onsubmit="return false;" autocomplete="off">
+        <div class="form-group" id="group-auth-callsign" style="display: none;">
+          <label for="auth-callsign-input">PILOT CALLSIGN</label>
+          <input type="text" id="auth-callsign-input" name="callsign" placeholder="MAVERICK" maxlength="16"
+            spellcheck="false">
+          <span class="field-hint">FREE SIGN-UP BONUS: ₹10 AUTOMATICALLY ALLOTTED</span>
+        </div>
+
+        <div class="form-group" id="group-auth-email">
+          <label for="auth-email-input" id="auth-email-label">EMAIL ADDRESS</label>
+          <input type="email" id="auth-email-input" name="email" placeholder="pilot@aerocrash.com" autocomplete="email"
+            spellcheck="false" required>
+        </div>
+
+        <div class="form-group" id="group-auth-password">
+          <label for="auth-password-input" id="auth-password-label">PASSWORD</label>
+          <input type="password" id="auth-password-input" name="password" placeholder="••••••••"
+            autocomplete="current-password" required>
+          <span class="field-hint" id="auth-hint">AUTHENTICATED VIA FIREBASE [PROJECT: CARRENTPEWEB]</span>
+        </div>
+
+        <div class="auth-disclaimer-box" id="auth-notice-box">
+          <p id="auth-notice-text">New registrations receive <strong>₹10 Free Credits</strong> instantly.</p>
+        </div>
+
+        <button type="button" id="btn-auth-submit" class="btn-tactical"
+          style="padding: 12px; font-size: 13px; font-weight: 700; width: 100%;">
+          SIGN IN & PROCEED
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- 03. PAYMENT & WALLET TOPUP SCREEN          -->
+  <!-- ========================================== -->
+  <section id="screen-payment" class="app-screen" aria-label="Wallet & Deposit">
+    <div class="payment-card">
+      <header class="payment-header">
+        <h1>PILOT WALLET // ADD FUNDS</h1>
+        <p>Deposit funds to fuel your flight stakes. Free starting bonus of ₹10 allotted.</p>
+      </header>
+
+      <!-- WALLET BALANCE BANNER -->
+      <div class="wallet-balance-banner">
+        <div class="wallet-banner-info">
+          <span class="label">CURRENT BALANCE</span>
+          <div id="payment-current-balance" class="val">₹10.00</div>
+        </div>
+        <div class="free-credit-badge">
+          ★ FREE BONUS<br>₹10 ALLOTTED
+        </div>
+      </div>
+
+      <!-- STATUS ALERT -->
+      <div id="deposit-status-alert" class="deposit-status-alert"></div>
+
+      <!-- QUICK DEPOSIT BUTTONS -->
+      <div class="form-group">
+        <label>SELECT DEPOSIT AMOUNT</label>
+        <div class="deposit-grid">
+          <button type="button" class="deposit-chip-btn" data-amt="50">+₹50</button>
+          <button type="button" class="deposit-chip-btn selected" data-amt="100">+₹100</button>
+          <button type="button" class="deposit-chip-btn" data-amt="200">+₹200</button>
+          <button type="button" class="deposit-chip-btn" data-amt="500">+₹500</button>
+          <button type="button" class="deposit-chip-btn" data-amt="1000">+₹1,000</button>
+          <button type="button" class="deposit-chip-btn" data-amt="2000">+₹2,000</button>
+          <button type="button" class="deposit-chip-btn" data-amt="5000">+₹5,000</button>
+          <button type="button" class="deposit-chip-btn" data-amt="8000">+₹8,000</button>
+        </div>
+      </div>
+
+      <!-- CUSTOM AMOUNT -->
+      <div class="form-group">
+        <label for="input-deposit-amount">CUSTOM AMOUNT (₹10 - ₹50,000)</label>
+        <div class="stake-input-wrapper">
+          <span class="currency-label" style="font-size: 16px; margin-right: 6px;">₹</span>
+          <input type="number" id="input-deposit-amount" value="100" min="10" max="50000" step="10">
+        </div>
+      </div>
+
+      <!-- PAYMENT METHODS -->
+      <div class="form-group">
+        <label>PAYMENT METHOD</label>
+        <div class="payment-methods-grid">
+          <div class="payment-method-item selected" data-method="upi">
+            <strong>UPI</strong>
+            <span>GPay / PhonePe</span>
+          </div>
+          <div class="payment-method-item" data-method="paytm">
+            <strong>PAYTM</strong>
+            <span>Wallet / QR</span>
+          </div>
+          <div class="payment-method-item" data-method="netbanking">
+            <strong>BANK</strong>
+            <span>Net Banking</span>
+          </div>
+          <div class="payment-method-item" data-method="card">
+            <strong>CARD</strong>
+            <span>Visa / RuPay</span>
+          </div>
+        </div>
+      </div>
+
+      <button type="button" id="btn-confirm-deposit" class="btn-deposit-action">
+        ADD ₹100 TO WALLET
+      </button>
+
+      <button type="button" id="btn-payment-proceed" class="btn-tactical"
+        style="padding: 12px; font-size: 13px; font-weight: 700; width: 100%;">
+        ENTER FLIGHT DECK (PLAY NOW)
+      </button>
+    </div>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- 04. MAIN FLIGHT COCKPIT SCREEN             -->
+  <!-- ========================================== -->
+  <section id="screen-game" class="app-screen" aria-label="Flight Arena">
+    <!-- COCKPIT HEADER -->
+    <header class="game-header">
+      <div class="header-left">
+        <div class="brand-mark">
+          <svg class="brand-icon" viewBox="0 0 32 32" aria-hidden="true">
+            <polygon points="16,2 19,12 29,17 29,20 19,18 19,25 23,28 23,30 16,28 9,30 9,28 13,25 13,18 3,20 3,17 13,12"
+              fill="currentColor" />
+          </svg>
+          <span class="brand-text">AERO<span style="color: var(--accent-amber);">CRASH</span></span>
+        </div>
+        <div class="round-info">
+          <span class="label">ROUND</span>
+          <span id="round-id-placeholder" class="value">#10189</span>
+        </div>
+        <div class="state-info">
+          <span class="label">STATE</span>
+          <span id="agy-state-pill" class="state-pill state-waiting">WAITING</span>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <!-- GAME MASTER BUTTON: STRICTLY FOR ADMIN ONLY -->
+        <button type="button" id="btn-gm-toggle" class="btn-secondary"
+          style="display: none; border-color: var(--status-warning); color: var(--status-warning);"
+          title="Game Master Controls (Admin Only)">
+          GAME MASTER
+        </button>
+
+        <button type="button" id="btn-open-deposit" class="btn-add-cash-header" title="Add Money / Wallet Deposit">
+          + ADD MONEY
+        </button>
+
+        <button type="button" id="btn-sound-toggle" class="btn-secondary" title="Toggle Sound">SND: ON</button>
+        <button type="button" id="btn-fullscreen-toggle" class="btn-secondary" title="Toggle Fullscreen">FS</button>
+        <button type="button" id="btn-rules-toggle" class="btn-secondary"
+          title="Flight Operations Briefing">RULES</button>
+
+        <div id="btn-profile-chip" class="user-profile-chip" title="View Pilot Career Dossier" role="button"
+          tabindex="0">
+          <svg class="chip-avatar" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <polygon points="12,2 15,9 22,12 15,15 12,22 9,15 2,12 9,9" />
+          </svg>
+          <span id="profile-chip-name" class="chip-name">PILOT</span>
+          <span id="profile-chip-balance" class="chip-balance">₹10</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- RECENT MULTIPLIER TICKER -->
+    <div class="history-ticker-bar" aria-label="Recent Multipliers">
+      <span class="ticker-label">RECENT:</span>
+      <div id="history-ticker-list" class="ticker-list"></div>
+    </div>
+
+    <!-- MAIN COCKPIT GRID -->
+    <main class="cockpit-grid">
+      <!-- LEFT CONTROLS PANEL -->
+      <aside class="cockpit-controls-panel" aria-label="Flight Control and Betting">
+        <div class="panel-header">
+          <h2>FLIGHT CONTROL & STAKE</h2>
+        </div>
+
+        <!-- STAKE STEPPER -->
+        <div class="control-box">
+          <label for="input-stake">STAKE AMOUNT (₹10 - ₹8,000)</label>
+          <div class="stake-stepper">
+            <button type="button" id="btn-stake-dec" class="btn-step" aria-label="Decrease stake">−</button>
+            <div class="stake-input-wrapper">
+              <span class="currency-label" style="font-size: 15px; margin-right: 4px;">₹</span>
+              <input type="number" id="input-stake" value="10" min="10" max="8000" step="10"
+                aria-label="Stake in Rupees">
+            </div>
+            <button type="button" id="btn-stake-inc" class="btn-step" aria-label="Increase stake">+</button>
+          </div>
+
+          <div class="quick-stake-grid">
+            <button type="button" class="btn-secondary" data-value="10">10</button>
+            <button type="button" class="btn-secondary" data-value="50">50</button>
+            <button type="button" class="btn-secondary" data-value="100">100</button>
+            <button type="button" class="btn-secondary" data-value="500">500</button>
+            <button type="button" class="btn-secondary" data-value="1000">1K</button>
+            <button type="button" class="btn-secondary" data-value="2000">2K</button>
+            <button type="button" class="btn-secondary" data-value="5000">5K</button>
+            <button type="button" class="btn-secondary" data-value="8000">8K</button>
+          </div>
+        </div>
+
+        <!-- AUTO CASHOUT -->
+        <div class="control-box">
+          <label for="input-auto-cashout">AUTO CASHOUT</label>
+          <div class="auto-cashout-row">
+            <label class="auto-toggle-label" for="check-auto-cashout">
+              <input type="checkbox" id="check-auto-cashout">
+              <span class="toggle-text">AUTO</span>
+            </label>
+            <div class="auto-input-wrapper">
+              <input type="number" id="input-auto-cashout" value="2.00" min="1.05" max="100.00" step="0.05"
+                aria-label="Auto cashout multiplier">
+              <span class="multi-label">X</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACTION BUTTON -->
+        <div class="action-section">
+          <div class="action-card">
+            <button type="button" id="btn-action" class="btn-action-main state-bet">
+              <span id="action-btn-text">ENTER BETTING</span>
+              <span id="action-btn-subtext" class="btn-subtext">Stake: ₹10</span>
+            </button>
+            <div id="action-feedback" class="action-feedback"></div>
+          </div>
+        </div>
+
+        <!-- MINI COCKPIT STATS -->
+        <div class="cockpit-stats-mini">
+          <div class="stat-row">
+            <span class="stat-label">WALLET BALANCE:</span>
+            <span id="user-vc-display" class="stat-value" style="color: var(--status-success);">₹10.00</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">TOTAL STAKED:</span>
+            <span id="stat-total-staked" class="stat-value">₹0</span>
+          </div>
+        </div>
+      </aside>
+
+      <!-- RIGHT ARENA & FLOOR DOCK -->
+      <section class="flight-arena-panel" aria-label="Flight Arena and Telemetry">
+        <!-- ARENA CANVAS VIEWPORT -->
+        <div class="arena-viewport">
+          <canvas id="flight-canvas"></canvas>
+
+          <!-- TAKEOFF COUNTDOWN OVERLAY (NO OVERLAP WITH MULTIPLIER) -->
+          <div id="countdown-overlay" class="countdown-overlay hidden">
+            <span class="countdown-title">TAKEOFF IN</span>
+            <span id="countdown-digits" class="countdown-digits">8</span>
+          </div>
+
+          <!-- CRASH / FLEW AWAY OVERLAY -->
+          <div id="crash-overlay" class="crash-overlay hidden">
+            <span class="crash-title">FLEW AWAY!</span>
+            <span id="crash-multiplier" class="crash-multiplier">2.50x</span>
+          </div>
+
+          <!-- CENTER HUD MULTIPLIER (HIDDEN DURING BETTING COUNTDOWN) -->
+          <div id="hud-multiplier-container" class="hud-multiplier-container hidden">
+            <span id="hud-multiplier" class="hud-multiplier">1.00x</span>
+            <span class="hud-subtitle">CURRENT MULTIPLIER</span>
+          </div>
+
+          <!-- CORNER TELEMETRY DATA -->
+          <div class="telemetry-corner top-left">
+            <div>ALT: <strong id="telem-alt">0000 M</strong></div>
+            <div>VEL: <strong id="telem-vel">0.00 MACH</strong></div>
+          </div>
+          <div class="telemetry-corner top-right">
+            <div>SYS: <strong>NOMINAL</strong></div>
+            <div>RADAR: <strong>ACTIVE</strong></div>
+          </div>
+          <div class="telemetry-corner bottom-left">
+            <div>VECTOR: <strong>STABLE</strong></div>
+          </div>
+
+          <!-- CASHOUT RESULT BANNER -->
+          <div id="player-result-banner" class="player-result-banner"></div>
+        </div>
+
+        <!-- FLOOR DOCK: SQUADRON BETS & FEED -->
+        <div class="flight-floor-dock">
+          <!-- SQUADRON TABLE -->
+          <div class="dock-section-squadron">
+            <div class="dock-header">
+              <h3>LIVE SQUADRON BETS</h3>
+              <span id="squadron-count-badge" class="squadron-count-badge">0 PILOTS</span>
+            </div>
+            <div class="bets-table-wrapper">
+              <table id="squadron-bets-table" class="squadron-table">
+                <thead>
+                  <tr>
+                    <th>PILOT</th>
+                    <th>STAKE</th>
+                    <th>EXIT</th>
+                    <th>PAYOUT</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- ACTIVITY FEED -->
+          <div class="dock-section-feed">
+            <div class="dock-header">
+              <h3>FLIGHT TELEMETRY FEED</h3>
+            </div>
+            <div id="activity-feed-list" class="feed-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- FOOTER STATUS LINE -->
+    <footer class="game-footer">
+      <div class="status-left">
+        <span class="status-pulse"></span>
+        <span>ENGINE: rAF-V1.0</span>
+        <span>LIMITS: ₹10 - ₹8,000</span>
+      </div>
+      <div class="status-right">
+        <span>PRESS <strong>SPACEBAR</strong> TO BET / CASH OUT</span>
+      </div>
+    </footer>
+  </section>
+
+  <!-- ========================================== -->
+  <!-- 05. PILOT CAREER DOSSIER MODAL             -->
+  <!-- ========================================== -->
+  <div id="modal-profile" class="modal" role="dialog" aria-modal="true" aria-labelledby="dossier-heading">
+    <div class="modal-box">
+      <header class="modal-header">
+        <h2 id="dossier-heading">PILOT CAREER DOSSIER</h2>
+        <button type="button" id="btn-profile-close" class="modal-close" aria-label="Close Dossier">×</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="dossier-section">
+          <h3>FLIGHT STATISTICS</h3>
+          <div class="dossier-grid">
+            <div class="dossier-item">
+              <span class="label">SECURITY LEVEL:</span>
+              <span id="dossier-user-role" class="value" style="color:var(--status-warning);">PILOT</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">WALLET BALANCE:</span>
+              <span id="dossier-display-balance" class="value" style="color:var(--status-success);">₹10</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">ROUNDS PLAYED:</span>
+              <span id="dossier-rounds-played" class="value">0</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">ROUNDS WON:</span>
+              <span id="dossier-rounds-won" class="value">0</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">ROUNDS LOST:</span>
+              <span id="dossier-rounds-lost" class="value">0</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">WIN RATE:</span>
+              <span id="dossier-win-rate" class="value">0.0%</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">HIGHEST EXIT:</span>
+              <span id="dossier-highest-multi" class="value">0.00x</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">BEST PAYOUT:</span>
+              <span id="dossier-best-payout" class="value">₹0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dossier-section">
+          <h3>RECENT FLIGHT LOGS</h3>
+          <div class="history-table-wrapper">
+            <table class="personal-history-table">
+              <thead>
+                <tr>
+                  <th>ROUND</th>
+                  <th>STAKE</th>
+                  <th>EXIT</th>
+                  <th>PROFIT</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="dossier-section">
+          <h3>ACCOUNT CONTROLS</h3>
+          <div class="danger-actions">
+            <button type="button" id="btn-open-deposit-from-dossier" class="btn-secondary"
+              style="border-color:var(--status-success);color:var(--status-success);">ADD FUNDS (₹)</button>
+            <button type="button" id="btn-reset-stats" class="btn-secondary">RESET STATS</button>
+            <button type="button" id="btn-auth-signout" class="btn-danger">SIGN OUT</button>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" onclick="document.getElementById('modal-profile').classList.remove('active')"
+          class="btn-tactical">
+          RETURN TO COCKPIT
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 06. GAME MASTER DRAWER (ADMIN ONLY)        -->
+  <!-- ========================================== -->
+  <aside id="drawer-game-master" class="drawer" role="dialog" aria-modal="true" aria-labelledby="gm-drawer-heading">
+    <header class="drawer-header">
+      <h2 id="gm-drawer-heading">GAME MASTER CONTROLS [ADMIN]</h2>
+      <button type="button" id="btn-gm-close" class="drawer-close" aria-label="Close Game Master">×</button>
+    </header>
+
+    <div class="drawer-content">
+      <div class="drawer-section">
+        <h3>ROUND OVERRIDE</h3>
+        <label
+          style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
+          <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL
+          TARGET
+        </label>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
+          <label for="gm-target-input" style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);">TARGET
+            MULTIPLIER:</label>
+          <input type="number" id="gm-target-input" value="2.50" step="0.1" min="1.01" max="1000.0"
+            style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:4px 8px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
+        </div>
+        <div class="drawer-grid-2" style="margin-top:10px;">
+          <button type="button" id="gm-btn-force-crash" class="btn-danger">FORCE CRASH NOW</button>
+          <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">PAUSE SIMULATION</button>
+        </div>
+      </div>
+
+      <div class="drawer-section">
+        <h3>FLEET SIMULATION</h3>
+        <div
+          style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:4px;">
+          <span style="color:var(--text-dim);">PILOT FLEET SIZE:</span>
+          <span id="gm-fleet-value" style="color:var(--accent-amber);font-weight:700;">150</span>
+        </div>
+        <input type="range" id="gm-fleet-count" min="10" max="300" value="150"
+          style="width:100%;accent-color:var(--accent-amber);">
+      </div>
+
+      <div class="drawer-section">
+        <h3>LIVE ENGINE TELEMETRY</h3>
+        <div class="live-metrics-grid">
+          <div class="dossier-item">
+            <span class="label">LIVE MULT:</span>
+            <span id="debug-live-multi" class="value" style="color:var(--accent-amber);">1.00x</span>
+          </div>
+          <div class="dossier-item">
+            <span class="label">TARGET MULT:</span>
+            <span id="debug-target-multi" class="value">NONE</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ========================================== -->
+  <!-- 07. FLIGHT OPERATIONS BRIEFING MODAL       -->
+  <!-- ========================================== -->
+  <div id="modal-onboarding" class="modal" role="dialog" aria-modal="true" aria-labelledby="briefing-heading">
+    <div class="modal-box">
+      <header class="modal-header">
+        <h2 id="briefing-heading">FLIGHT OPERATIONS BRIEFING</h2>
+        <button type="button" onclick="document.getElementById('modal-onboarding').classList.remove('active')"
+          class="modal-close" aria-label="Close Briefing">×</button>
+      </header>
+
+      <div class="modal-body">
+        <div class="onboarding-steps">
+          <div class="onboarding-step">
+            <h4>01 // PLACE YOUR STAKE (₹10 - ₹8,000)</h4>
+            <p>Set your stake during the 8-second countdown window. Minimum bet is ₹10 and maximum is ₹8,000.</p>
+          </div>
+          <div class="onboarding-step">
+            <h4>02 // MULTIPLIER ACCELERATION</h4>
+            <p>As the aircraft climbs into the sky, the payout multiplier ascends exponentially from 1.00x upward.</p>
+          </div>
+          <div class="onboarding-step">
+            <h4>03 // CASH OUT BEFORE FLEW AWAY</h4>
+            <p>Hit CASH OUT or press SPACEBAR before the aircraft crashes to secure your winnings in Rupees (₹).</p>
+          </div>
+        </div>
+      </div>
+
+      <footer class="modal-footer">
+        <button type="button" id="btn-onboarding-dismiss" class="btn-tactical">
+          PROCEED TO COCKPIT
+        </button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 08. DEV TELEMETRY OVERLAY [Ctrl+Shift+D]  -->
+  <!-- ========================================== -->
+  <div id="debug-overlay">
+    <div class="debug-title">DEV TELEMETRY [Ctrl+Shift+D]</div>
+    <div>FPS: 60</div>
+    <div>STATUS: NOMINAL</div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+
+</html>
