@@ -14,7 +14,7 @@
     STORAGE_KEY: "aero_crash_rupees_v2",
     INITIAL_BALANCE: 10.00, // ₹10 Free Starting Credit
     MIN_STAKE: 1,           // ₹1 minimum (no restrictive minimum)
-    MAX_STAKE: 100000,      // ₹1,00,000 maximum stake limit (One Lakh Rupee Cap)
+    MAX_STAKE: 8000,        // ₹8,000 maximum stake limit (8K Cap)
     MIN_WITHDRAWAL: 50,     // ₹50 minimum withdrawal
     MAX_SIMULTANEOUS_BETS: Infinity, // No limit on simultaneous bets
     TIMINGS: {
