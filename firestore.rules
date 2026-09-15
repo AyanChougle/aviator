@@ -1,55 +1,39 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function signedIn() {
-      return request.auth != null;
-    }
-
-    function isAdmin() {
-      return signedIn() && (
-        request.auth.token.email == 'carrentpedatabase@gmail.com' ||
-        request.auth.token.email.matches('^admin.*')
-      );
-    }
-
-    // 1. Pilot Profiles, Bank Details, and Balances
-    match /users/{userId} {
-      allow read, write, create, update: if signedIn();
-      allow delete: if isAdmin();
-    }
-
-    // 2. Real-Time Active Squadron Bets
-    match /active_bets/{betId} {
-      allow read, write, create, update, delete: if signedIn();
-    }
-
-    // 3. Global Synchronized Game Rounds State
+    // 1. Real-Time Global Synchronized Game Rounds (Open to all connected players)
     match /game_state/{stateId} {
-      allow read, write, create, update: if signedIn();
+      allow read, write: if true;
     }
 
-    // 4. Real-Money Wallet Deposits
+    // 2. Real-Time Active Squadron Bets (Open to all connected players)
+    match /active_bets/{betId} {
+      allow read, write, delete: if true;
+    }
+
+    // 3. Pilot Profiles, Bank Details, and Balances
+    match /users/{userId} {
+      allow read, write: if true;
+    }
+
+    // 4. Wallet Deposits
     match /deposits/{depositId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // 5. Instant Bank & UPI Withdrawal Requests
+    // 5. Withdrawal Requests
     match /withdrawals/{withdrawalId} {
-      allow read, create, update: if signedIn();
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // 6. Pilot Authentication & Access Audit Logs
+    // 6. Login and Audit Logs
     match /login_logs/{logId} {
-      allow create: if signedIn();
-      allow read, delete: if isAdmin();
+      allow read, write: if true;
     }
 
-    // 7. General Fallback for Authenticated Pilots
+    // 7. General Fallback
     match /{document=**} {
-      allow read, write: if signedIn();
+      allow read, write: if true;
     }
   }
 }

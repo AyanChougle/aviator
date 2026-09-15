@@ -3265,3 +3265,130 @@ input:-webkit-autofill:active {
   font-weight: 700;
   color: var(--status-success);
 }
+
+/* STACKED DUAL BET PANELS & AUTOMATION CONTROLS */
+.bet-panels-container {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px;
+  width: 100%;
+}
+
+.single-bet-card {
+  display: flex !important;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(14, 20, 32, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: var(--radius-md);
+  padding: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  transition: border-color 0.2s ease;
+}
+
+.single-bet-card:hover {
+  border-color: rgba(255, 107, 34, 0.3);
+}
+
+.card-slot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding-bottom: 5px;
+}
+
+.slot-badge-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.slot-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: background 0.2s;
+}
+
+.slot-dot.active {
+  background: var(--status-success);
+  box-shadow: 0 0 6px var(--status-success);
+}
+
+.slot-title {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  color: var(--accent-amber);
+}
+
+.slot-stake-summary {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--status-success);
+}
+
+.automation-dual-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 6px;
+  align-items: center;
+}
+
+.auto-toggle-box {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-xs);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.auto-toggle-box .auto-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+
+.auto-toggle-box .auto-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+
+.auto-toggle-box .auto-input-card {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.auto-toggle-box .auto-input-card input {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text-main);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 0;
+  outline: none;
+}
+
+.multi-suffix {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-orange);
+}

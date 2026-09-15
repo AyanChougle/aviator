@@ -291,30 +291,16 @@
         </div>
 
                 <div id="controls-betting-view" class="controls-view active">
-          <!-- DUAL BET SELECTOR HEADER -->
-          <div class="bet-slot-bar">
-            <div class="bet-slot-tabs">
-              <button type="button" class="bet-slot-tab active" id="tab-bet-slot-1" data-slot="1">
-                <span>BET 1</span>
-                <span class="slot-status-dot" id="slot-dot-1"></span>
-              </button>
-              <button type="button" class="bet-slot-tab" id="tab-bet-slot-2" data-slot="2">
-                <span>BET 2</span>
-                <span class="slot-status-dot" id="slot-dot-2"></span>
-              </button>
-            </div>
-            <button type="button" class="btn-dual-mode-toggle" id="btn-toggle-dual-mode" title="Toggle Dual Bet Panels View">
-              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="8" height="18" rx="1"></rect><rect x="13" y="3" width="8" height="18" rx="1"></rect></svg>
-              <span>DUAL</span>
-            </button>
-          </div>
-
-          <!-- BET CONTAINER (SUPPORTS TAB SWITCH & DUAL SIDE-BY-SIDE / STACKED) -->
+          <!-- STACKED BET PANELS CONTAINER (BOTH BET 1 AND BET 2 ONE BELOW ANOTHER) -->
           <div class="bet-panels-container" id="bet-panels-wrapper">
-            <!-- PANEL 1 -->
-            <div class="single-bet-card active" id="bet-card-1" data-slot="1">
+            
+            <!-- BET CARD 1 -->
+            <div class="single-bet-card" id="bet-card-1" data-slot="1">
               <div class="card-slot-header">
-                <span class="slot-title">SLOT 01 // PRIMARY</span>
+                <div class="slot-badge-group">
+                  <span class="slot-dot active" id="slot-dot-1"></span>
+                  <span class="slot-title">BET 01</span>
+                </div>
                 <span class="slot-stake-summary" id="slot-summary-1">₹10.00</span>
               </div>
 
@@ -342,19 +328,33 @@
                 </div>
               </div>
 
-              <!-- AUTO CASHOUT SECTION 1 -->
-              <div class="control-box auto-section">
-                <div class="auto-header-row">
-                  <label for="input-auto-cashout-1">AUTO CASHOUT</label>
-                  <label class="switch-toggle" for="check-auto-cashout-1">
-                    <input type="checkbox" id="check-auto-cashout-1">
-                    <span class="slider round"></span>
-                  </label>
+              <!-- AUTOMATION CONTROLS (AUTO BET & AUTO CASHOUT) -->
+              <div class="automation-dual-grid">
+                <!-- AUTO BET 1 -->
+                <div class="auto-toggle-box">
+                  <div class="auto-header-row">
+                    <span class="auto-label">AUTO BET</span>
+                    <label class="switch-toggle" for="check-auto-bet-1">
+                      <input type="checkbox" id="check-auto-bet-1">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
                 </div>
-                <div class="auto-input-card">
-                  <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
-                  <input type="number" id="input-auto-cashout-1" value="2.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 1">
-                  <button type="button" id="btn-clear-autocashout-1" class="btn-clear-input" aria-label="Reset auto cashout 1">&times;</button>
+
+                <!-- AUTO CASHOUT 1 -->
+                <div class="auto-toggle-box">
+                  <div class="auto-header-row">
+                    <span class="auto-label">AUTO CASHOUT</span>
+                    <label class="switch-toggle" for="check-auto-cashout-1">
+                      <input type="checkbox" id="check-auto-cashout-1">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                  <div class="auto-input-card">
+                    <input type="number" id="input-auto-cashout-1" value="2.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 1">
+                    <span class="multi-suffix">x</span>
+                    <button type="button" id="btn-clear-autocashout-1" class="btn-clear-input" aria-label="Reset auto cashout 1">&times;</button>
+                  </div>
                 </div>
               </div>
 
@@ -372,10 +372,13 @@
               </div>
             </div>
 
-            <!-- PANEL 2 -->
+            <!-- BET CARD 2 -->
             <div class="single-bet-card" id="bet-card-2" data-slot="2">
               <div class="card-slot-header">
-                <span class="slot-title">SLOT 02 // SECONDARY</span>
+                <div class="slot-badge-group">
+                  <span class="slot-dot" id="slot-dot-2"></span>
+                  <span class="slot-title">BET 02</span>
+                </div>
                 <span class="slot-stake-summary" id="slot-summary-2">₹10.00</span>
               </div>
 
@@ -403,19 +406,33 @@
                 </div>
               </div>
 
-              <!-- AUTO CASHOUT SECTION 2 -->
-              <div class="control-box auto-section">
-                <div class="auto-header-row">
-                  <label for="input-auto-cashout-2">AUTO CASHOUT</label>
-                  <label class="switch-toggle" for="check-auto-cashout-2">
-                    <input type="checkbox" id="check-auto-cashout-2">
-                    <span class="slider round"></span>
-                  </label>
+              <!-- AUTOMATION CONTROLS (AUTO BET & AUTO CASHOUT) -->
+              <div class="automation-dual-grid">
+                <!-- AUTO BET 2 -->
+                <div class="auto-toggle-box">
+                  <div class="auto-header-row">
+                    <span class="auto-label">AUTO BET</span>
+                    <label class="switch-toggle" for="check-auto-bet-2">
+                      <input type="checkbox" id="check-auto-bet-2">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
                 </div>
-                <div class="auto-input-card">
-                  <svg class="speedometer-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v2"></path><path d="M4.93 4.93l1.41 1.41"></path><path d="M20 12h2"></path><path d="M19.07 4.93l-1.41 1.41"></path><path d="M15.24 15.24l-3.24-3.24"></path><circle cx="12" cy="12" r="8"></circle></svg>
-                  <input type="number" id="input-auto-cashout-2" value="3.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 2">
-                  <button type="button" id="btn-clear-autocashout-2" class="btn-clear-input" aria-label="Reset auto cashout 2">&times;</button>
+
+                <!-- AUTO CASHOUT 2 -->
+                <div class="auto-toggle-box">
+                  <div class="auto-header-row">
+                    <span class="auto-label">AUTO CASHOUT</span>
+                    <label class="switch-toggle" for="check-auto-cashout-2">
+                      <input type="checkbox" id="check-auto-cashout-2">
+                      <span class="slider round"></span>
+                    </label>
+                  </div>
+                  <div class="auto-input-card">
+                    <input type="number" id="input-auto-cashout-2" value="3.00" min="1.05" max="30.00" step="0.05" aria-label="Auto cashout multiplier 2">
+                    <span class="multi-suffix">x</span>
+                    <button type="button" id="btn-clear-autocashout-2" class="btn-clear-input" aria-label="Reset auto cashout 2">&times;</button>
+                  </div>
                 </div>
               </div>
 
@@ -432,9 +449,10 @@
                 </button>
               </div>
             </div>
+
           </div>
 
-          <div id="action-feedback" class="action-feedback"></div>
+          <div id="action-feedback"  class="action-feedback"></div>
 
           <!-- WALLET BALANCE CARD (CLICKABLE) -->
           <div id="card-wallet-bottom" class="wallet-summary-card" role="button" tabindex="0" title="Click to Deposit or Withdraw Funds">
