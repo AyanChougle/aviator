@@ -603,13 +603,25 @@
   }
 
   //====================================================================
-  // GLOBAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE
+  // GLOBAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE (LEADER / MASTER)
   //====================================================================
   let isGlobalSyncActive = false;
   let globalRoundUnsubscribe = null;
+  const localSessionId = "pilot_session_" + Math.random().toString(36).substring(2, 9);
+  let isMasterAuthority = false;
+  let lastRemoteUpdate = Date.now();
+
+  function isLocalMaster() {
+    // Admin always takes master authority
+    if (savedState.userRole === "admin") return true;
+    return isMasterAuthority;
+  }
 
   function initGlobalMultiplayerSync() {
-    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) {
+      isMasterAuthority = true;
+      return;
+    }
     if (isGlobalSyncActive) return;
     isGlobalSyncActive = true;
 
@@ -617,58 +629,79 @@
 
     globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
       if (!doc.exists) {
-        publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
+        isMasterAuthority = true;
+        publishGlobalRoundState("BETTING", roundNumber, crashMultiplier);
         return;
       }
 
       const data = doc.data();
       const serverNow = Date.now();
+      lastRemoteUpdate = serverNow;
 
+      // Master coordination determination
+      if (savedState.userRole === "admin") {
+        isMasterAuthority = true;
+      } else if (data.masterId === localSessionId) {
+        isMasterAuthority = true;
+      } else {
+        // If master has gone stale (> 25 seconds without update), claim authority
+        if (data.updatedAt && (serverNow - data.updatedAt > 25000)) {
+          isMasterAuthority = true;
+        } else {
+          isMasterAuthority = false;
+        }
+      }
+
+      // Sync round number and crash target from master
       if (data.roundNumber && data.roundNumber !== roundNumber) {
         roundNumber = data.roundNumber;
-        crashMultiplier = data.crashMultiplier || generateCrashPoint();
+        crashMultiplier = typeof data.crashMultiplier === "number" ? data.crashMultiplier : generateCrashPoint();
         if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         subscribeToActiveBets(roundNumber);
       }
 
-      if (data.crashMultiplier && Math.abs(data.crashMultiplier - crashMultiplier) > 0.01) {
+      if (typeof data.crashMultiplier === "number" && Math.abs(data.crashMultiplier - crashMultiplier) > 0.001) {
         crashMultiplier = data.crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
       }
 
-      if (data.state && data.state !== gameState) {
+      // Sync phase from master if not local master
+      if (!isLocalMaster() && data.state && data.state !== gameState) {
         if (data.state === "RUNNING") {
-          const serverElapsed = (data.launchStartTime && serverNow >= data.launchStartTime)
-            ? Math.min(15000, serverNow - data.launchStartTime)
-            : 0;
-          launchStartTime = performance.now() - serverElapsed;
+          const elapsedServer = data.launchStartTime ? Math.max(0, serverNow - data.launchStartTime) : 0;
+          launchStartTime = performance.now() - elapsedServer;
           transitionTo("RUNNING", true);
         } else if (data.state === "CRASHED") {
-          liveMultiplier = data.crashMultiplier || crashMultiplier;
+          liveMultiplier = typeof data.crashMultiplier === "number" ? data.crashMultiplier : crashMultiplier;
           transitionTo("CRASHED", true);
         } else if (data.state === "BETTING") {
-          const serverElapsed = (data.bettingStartTime && serverNow >= data.bettingStartTime)
-            ? Math.min(CONFIG.TIMINGS.BETTING_MS, serverNow - data.bettingStartTime)
-            : 0;
-          roundStartTime = performance.now() - serverElapsed;
+          const elapsedServer = data.bettingStartTime ? Math.max(0, serverNow - data.bettingStartTime) : 0;
+          roundStartTime = performance.now() - elapsedServer;
           transitionTo("BETTING", true);
         } else if (data.state === "LAUNCHING") {
           transitionTo("LAUNCHING", true);
         }
       }
-    }, function () {});
+    }, function (err) {
+      console.warn("[AeroCrash] Multiplayer sync notice:", err.message);
+      isMasterAuthority = true;
+    });
   }
 
-  function publishGlobalRoundState(state, rNum, cMulti, sTime) {
+  function publishGlobalRoundState(state, rNum, cMulti) {
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    if (!isLocalMaster()) return; // Followers do not overwrite global game state
+
+    const nowEpoch = Date.now();
     window.AERO_FIREBASE.db.collection("game_state").doc("current_round").set({
       roundNumber: rNum,
       state: state,
       crashMultiplier: cMulti,
-      bettingStartTime: state === "BETTING" ? Date.now() : 0,
-      launchStartTime: state === "RUNNING" ? Date.now() : 0,
-      updatedAt: Date.now()
+      bettingStartTime: state === "BETTING" ? nowEpoch : 0,
+      launchStartTime: state === "RUNNING" ? nowEpoch : 0,
+      masterId: localSessionId,
+      updatedAt: nowEpoch
     }, { merge: true }).catch(function () {});
   }
 
@@ -926,8 +959,8 @@
         liveTrail = [];
 
         subscribeToActiveBets(roundNumber);
-        if (!fromRemote) {
-          publishGlobalRoundState("BETTING", roundNumber, crashMultiplier, Date.now());
+        if (!fromRemote && isLocalMaster()) {
+          publishGlobalRoundState("BETTING", roundNumber, crashMultiplier);
         }
 
         if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
@@ -945,8 +978,8 @@
         if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         soundLaunch();
-        if (!fromRemote) {
-          publishGlobalRoundState("LAUNCHING", roundNumber, crashMultiplier, Date.now());
+        if (!fromRemote && isLocalMaster()) {
+          publishGlobalRoundState("LAUNCHING", roundNumber, crashMultiplier);
         }
         updateActionButtons();
         break;
@@ -958,16 +991,16 @@
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
         if (DOM.statePill) DOM.statePill.textContent = "IN PROGRESS";
-        if (!fromRemote) {
-          publishGlobalRoundState("RUNNING", roundNumber, crashMultiplier, Date.now());
+        if (!fromRemote && isLocalMaster()) {
+          publishGlobalRoundState("RUNNING", roundNumber, crashMultiplier);
         }
         updateActionButtons();
         break;
 
       case "CRASHED":
         soundCrash();
-        if (!fromRemote) {
-          publishGlobalRoundState("CRASHED", roundNumber, liveMultiplier, Date.now());
+        if (!fromRemote && isLocalMaster()) {
+          publishGlobalRoundState("CRASHED", roundNumber, liveMultiplier);
         }
         renderSquadronTable();
         addTickerBadge(liveMultiplier);
