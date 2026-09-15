@@ -2717,3 +2717,104 @@ input:checked + .slider:before {
     padding: 6px 0;
   }
 }
+
+/* ADMIN DRAWER TABS & DATA TABLES */
+.admin-drawer-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  background-color: var(--bg-surface-2);
+  border-bottom: 1px solid var(--border-dim);
+  padding: 4px;
+  gap: 4px;
+}
+
+.admin-tab-btn {
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 8px 2px;
+  border-radius: var(--radius-xs);
+  transition: all 0.15s ease;
+}
+
+.admin-tab-btn:hover {
+  color: var(--text-main);
+  background-color: var(--bg-surface-3);
+}
+
+.admin-tab-btn.active {
+  background: var(--bg-surface-1);
+  color: var(--status-warning);
+  border: 1px solid var(--border-mid);
+}
+
+.admin-panel-view {
+  display: none;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-panel-view.active {
+  display: flex;
+}
+
+.admin-table-container {
+  max-height: 280px;
+  overflow-y: auto;
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-xs);
+  background-color: var(--bg-surface-2);
+}
+
+.admin-data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.admin-data-table th {
+  position: sticky;
+  top: 0;
+  background-color: var(--bg-surface-3);
+  color: var(--text-dim);
+  text-align: left;
+  padding: 6px 8px;
+  font-size: 9px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border-dim);
+  z-index: 1;
+}
+
+.admin-data-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: var(--text-muted);
+}
+
+.btn-admin-action-sm {
+  padding: 2px 6px;
+  font-size: 9px;
+  font-weight: 700;
+  border-radius: 2px;
+}
+
+.btn-admin-approve {
+  background-color: var(--status-success-dim);
+  border: 1px solid var(--status-success);
+  color: var(--status-success);
+}
+
+.btn-admin-reject {
+  background-color: var(--status-danger-dim);
+  border: 1px solid var(--status-danger);
+  color: var(--status-danger);
+}
+
+/* CLEAN 2-TAB AUTH TABS (FOR REGULAR USERS) */
+.auth-tabs-clean {
+  grid-template-columns: repeat(2, 1fr) !important;
+}

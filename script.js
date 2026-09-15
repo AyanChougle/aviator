@@ -1,6 +1,7 @@
 /**
  * AEROCRASH — TACTICAL HIGH-ALTITUDE FLIGHT SIMULATOR
  * Modernized UI, Live Telemetry, Multiplayer Squadron, Full Bank & UPI Withdrawal System, Firestore Cloud Sync
+ * Real-Time IP Detection, Unpredictable Dynamic Physics, Admin User & Withdrawal Management
  */
 
 (function () {
@@ -29,6 +30,9 @@
     "ApexFalcon", "ViperOne", "MachNine", "NightHawk", "Starlight", "Solaris", "Maverick"
   ];
 
+  let clientIP = "Detecting...";
+  let clientGeo = {};
+
   let savedState = {
     callsign: "MAVERICK",
     userEmail: "",
@@ -52,6 +56,38 @@
     audioEnabled: true,
   };
 
+  // Fetch Public IP Address
+  function fetchClientIP() {
+    fetch("https://api.ipify.org?format=json")
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && data.ip) {
+          clientIP = data.ip;
+          const ipElem = document.getElementById("dossier-user-ip");
+          if (ipElem) ipElem.textContent = clientIP;
+          // Sync IP to Firestore if logged in
+          if (savedState.isLoggedIn) saveState();
+        }
+      })
+      .catch(function () {
+        fetch("https://ipapi.co/json/")
+          .then(function (res) { return res.json(); })
+          .then(function (data) {
+            if (data && data.ip) {
+              clientIP = data.ip;
+              clientGeo = { city: data.city, country: data.country_name, org: data.org };
+              const ipElem = document.getElementById("dossier-user-ip");
+              if (ipElem) ipElem.textContent = clientIP;
+              if (savedState.isLoggedIn) saveState();
+            }
+          })
+          .catch(function () {
+            clientIP = "127.0.0.1 (Local)";
+          });
+      });
+  }
+  fetchClientIP();
+
   function loadState() {
     try {
       const data = localStorage.getItem(CONFIG.STORAGE_KEY) || localStorage.getItem("aero_crash_rupees_v1");
@@ -73,11 +109,15 @@
         const uid = window.AERO_FIREBASE.auth.currentUser.uid;
         window.AERO_FIREBASE.db.collection("users").doc(uid).set({
           callsign: savedState.callsign,
+          email: savedState.userEmail,
           role: savedState.userRole,
           balance: savedState.virtualBalance,
           career: savedState.career,
+          lastIP: clientIP,
+          geo: clientGeo,
+          device: navigator.userAgent,
           lastActive: new Date()
-        }, { merge: true }).catch(function(err) {
+        }, { merge: true }).catch(function (err) {
           console.warn("Firestore sync warning:", err);
         });
       }
@@ -86,7 +126,6 @@
     }
   }
 
-  // Helper: format Rupees
   function formatRupees(amount) {
     const num = Number(amount) || 0;
     return "₹" + num.toLocaleString("en-IN", {
@@ -171,8 +210,11 @@
   let cashoutAmount = 0;
 
   let squadronPilots = [];
-  let currentAuthMode = "login"; // "login" | "register" | "admin"
+  let currentAuthMode = "login";
   let userDocUnsubscribe = null;
+
+  // Live Flight Trajectory Points (UNPREDICTABLE)
+  let liveTrail = [];
 
   //====================================================================
   // DOM ELEMENTS CACHE
@@ -272,6 +314,7 @@
       modalDepositChips: document.querySelectorAll("#wallet-tab-content-deposit .deposit-chip-btn"),
       modalDepositInput: document.getElementById("modal-input-deposit-amount"),
       modalPaymentMethods: document.querySelectorAll("#wallet-tab-content-deposit .payment-method-item"),
+      depositUtrInput: document.getElementById("deposit-utr-input"),
       btnModalDepositConfirm: document.getElementById("btn-modal-deposit-confirm"),
 
       // Withdrawal Modal Elements
@@ -306,8 +349,10 @@
       btnOpenWalletFromDossier: document.getElementById("btn-open-wallet-from-dossier"),
       btnResetStats: document.getElementById("btn-reset-stats"),
       btnAuthSignout: document.getElementById("btn-auth-signout"),
+      dossierCallsign: document.getElementById("dossier-callsign"),
       dossierRole: document.getElementById("dossier-user-role"),
       dossierBalance: document.getElementById("dossier-display-balance"),
+      dossierUserIp: document.getElementById("dossier-user-ip"),
       dossierRoundsPlayed: document.getElementById("dossier-rounds-played"),
       dossierRoundsWon: document.getElementById("dossier-rounds-won"),
       dossierRoundsLost: document.getElementById("dossier-rounds-lost"),
@@ -318,6 +363,17 @@
       // Game Master Drawer
       drawerGM: document.getElementById("drawer-game-master"),
       btnGmClose: document.getElementById("btn-gm-close"),
+      tabAdminFlight: document.getElementById("tab-admin-flight"),
+      tabAdminUsers: document.getElementById("tab-admin-users"),
+      tabAdminWithdrawals: document.getElementById("tab-admin-withdrawals"),
+      adminPanelFlight: document.getElementById("admin-panel-flight"),
+      adminPanelUsers: document.getElementById("admin-panel-users"),
+      adminPanelWithdrawals: document.getElementById("admin-panel-withdrawals"),
+      adminUsersTable: document.getElementById("admin-users-table"),
+      adminWithdrawalsTable: document.getElementById("admin-withdrawals-table"),
+      btnRefreshAdminUsers: document.getElementById("btn-refresh-admin-users"),
+      btnRefreshAdminWithdrawals: document.getElementById("btn-refresh-admin-withdrawals"),
+
       gmOverrideEnabled: document.getElementById("gm-override-enabled"),
       gmTargetInput: document.getElementById("gm-target-input"),
       gmBtnForceCrash: document.getElementById("gm-btn-force-crash"),
@@ -353,7 +409,6 @@
     }
   }
 
-  // Update all UI Balance Displays across the entire cockpit & modals
   function updatePlayerUIBalance() {
     const formatted = formatRupees(savedState.virtualBalance);
     if (DOM.userBalanceDisplay) DOM.userBalanceDisplay.textContent = formatted;
@@ -367,6 +422,8 @@
 
     if (DOM.chipName) DOM.chipName.textContent = savedState.callsign || "PILOT";
     if (DOM.chipAvatarLetter) DOM.chipAvatarLetter.textContent = (savedState.callsign || "P").charAt(0).toUpperCase();
+    if (DOM.dossierCallsign) DOM.dossierCallsign.textContent = savedState.callsign || "MAVERICK";
+    if (DOM.dossierUserIp) DOM.dossierUserIp.textContent = clientIP || "Detecting...";
   }
 
   function showActionFeedback(msg, type) {
@@ -400,9 +457,8 @@
     const item = document.createElement("div");
     item.className = "feed-item " + (type || "");
 
-    let dotColor = "dot";
     item.innerHTML = '<span class="timestamp">' + timeStr + '</span>' +
-      '<span class="' + dotColor + '"></span>' +
+      '<span class="dot"></span>' +
       '<span class="event-text">' + text + '</span>';
 
     DOM.activityFeedList.appendChild(item);
@@ -412,7 +468,6 @@
     DOM.activityFeedList.scrollTop = DOM.activityFeedList.scrollHeight;
   }
 
-  // Update Clock in Footer
   function updateLiveClock() {
     if (!DOM.footerLiveClock) return;
     const now = new Date();
@@ -421,7 +476,7 @@
   setInterval(updateLiveClock, 1000);
 
   //====================================================================
-  // MULTIPLIER CURVE & ROUND ENGINE
+  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE
   //====================================================================
   function generateCrashPoint() {
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
@@ -429,26 +484,23 @@
       if (!isNaN(manual) && manual >= 1.01) return manual;
     }
     const r = Math.random();
-    if (r < 0.04) return 1.00;
-    if (r < 0.50) return Math.floor((1.01 + Math.random() * 1.5) * 100) / 100;
-    if (r < 0.85) return Math.floor((2.00 + Math.random() * 4.0) * 100) / 100;
-    if (r < 0.97) return Math.floor((6.00 + Math.random() * 15.0) * 100) / 100;
-    return Math.floor((20.0 + Math.random() * 80.0) * 100) / 100;
+    if (r < 0.05) return 1.00;
+    if (r < 0.48) return Math.floor((1.01 + Math.random() * 1.5) * 100) / 100;
+    if (r < 0.82) return Math.floor((2.00 + Math.random() * 4.2) * 100) / 100;
+    if (r < 0.96) return Math.floor((6.00 + Math.random() * 18.0) * 100) / 100;
+    return Math.floor((20.0 + Math.random() * 95.0) * 100) / 100;
   }
 
   function calculateMultiplier(elapsedSec) {
-    // Smooth exponential curve: M = e^(0.06 * t^1.15)
-    const exponent = 0.06 * Math.pow(elapsedSec, 1.15);
+    // Natural continuous upward acceleration: M = e^(0.058 * t^1.14)
+    const exponent = 0.058 * Math.pow(elapsedSec, 1.14);
     return Math.max(1.00, Math.exp(exponent));
   }
 
   function transitionTo(newState) {
     gameState = newState;
 
-    if (DOM.statePill) {
-      DOM.statePill.textContent = newState;
-    }
-
+    if (DOM.statePill) DOM.statePill.textContent = newState;
     if (DOM.stateDot) {
       DOM.stateDot.className = "status-dot " + (newState === "RUNNING" ? "green" : newState === "BETTING" ? "amber" : "red");
     }
@@ -464,13 +516,13 @@
         cashoutAmount = 0;
         liveMultiplier = 1.00;
         crashMultiplier = generateCrashPoint();
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         roundStartTime = performance.now();
+        liveTrail = [];
 
-        // Regenerate fleet
         squadronPilots = generateSquadron(fleetCount);
         renderSquadronTable(true);
 
-        // Hide overlays, show countdown
         if (DOM.hudContainer) DOM.hudContainer.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.remove("hidden");
@@ -483,13 +535,14 @@
       case "LAUNCHING":
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.statePill) DOM.statePill.textContent = "LAUNCHING";
-        if (DOM.liveTargetDebug) DOM.liveTargetDebug.textContent = crashMultiplier.toFixed(2) + "x";
+        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         soundLaunch();
         updateActionButton();
         break;
 
       case "RUNNING":
         launchStartTime = performance.now();
+        liveTrail = [];
         if (DOM.countdownOverlay) DOM.countdownOverlay.classList.add("hidden");
         if (DOM.crashOverlay) DOM.crashOverlay.classList.add("hidden");
         if (DOM.hudContainer) DOM.hudContainer.classList.remove("hidden");
@@ -680,7 +733,6 @@
     }
   }
 
-  // Keyboard Spacebar to Bet/Cashout
   window.addEventListener("keydown", function (e) {
     if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
       e.preventDefault();
@@ -767,7 +819,7 @@
   }
 
   //====================================================================
-  // CANVAS RENDERING (RADAR THEME MATCHING SCREENSHOT)
+  // DYNAMIC UNPREDICTABLE CANVAS PHYSICS (NO FIXED ENDPOINT)
   //====================================================================
   let canvasCtx = null;
   let canvasWidth = 800;
@@ -810,7 +862,6 @@
     const cx = canvasWidth * 0.58;
     const cy = canvasHeight * 0.55;
 
-    // Concentric Range Rings
     ctx.save();
     ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
     ctx.lineWidth = 1;
@@ -822,17 +873,14 @@
       ctx.stroke();
     });
 
-    // Crosshairs
     ctx.beginPath();
     ctx.moveTo(cx - 280, cy);
     ctx.lineTo(cx + 280, cy);
     ctx.moveTo(cx, cy - 280);
     ctx.lineTo(cx, cy + 280);
     ctx.stroke();
-
     ctx.restore();
 
-    // Mountain silhouettes in background
     ctx.save();
     ctx.fillStyle = "rgba(11, 17, 26, 0.4)";
     ctx.beginPath();
@@ -853,7 +901,6 @@
     ctx.translate(x, y);
     ctx.rotate(angle);
 
-    // Glowing exhaust trail particles
     if (gameState === "RUNNING") {
       ctx.shadowColor = "#ff7300";
       ctx.shadowBlur = 12;
@@ -864,21 +911,19 @@
       ctx.shadowBlur = 0;
     }
 
-    // Jet Airplane Silhouette (Tactical Jet)
     ctx.fillStyle = "#ff7300";
     ctx.beginPath();
-    ctx.moveTo(14, 0);     // Nose
-    ctx.lineTo(-4, -10);   // Left wing tip
-    ctx.lineTo(-2, -3);    // Wing root
-    ctx.lineTo(-12, -7);   // Tail left
-    ctx.lineTo(-10, 0);    // Tail center
-    ctx.lineTo(-12, 7);    // Tail right
-    ctx.lineTo(-2, 3);     // Wing root
-    ctx.lineTo(-4, 10);    // Right wing tip
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-4, -10);
+    ctx.lineTo(-2, -3);
+    ctx.lineTo(-12, -7);
+    ctx.lineTo(-10, 0);
+    ctx.lineTo(-12, 7);
+    ctx.lineTo(-2, 3);
+    ctx.lineTo(-4, 10);
     ctx.closePath();
     ctx.fill();
 
-    // White cockpit canopy highlight
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.arc(4, 0, 2, 0, Math.PI * 2);
@@ -896,47 +941,77 @@
 
     const startX = 35;
     const startY = canvasHeight - 28;
-    const endX = canvasWidth - 60;
-    const endY = 40;
 
     if (gameState === "BETTING" || gameState === "WAITING") {
       drawPlane(ctx, startX + 25, startY, 0);
       return;
     }
 
-    let progress = 0;
-    if (gameState === "LAUNCHING") {
-      progress = 0.05;
-    } else if (gameState === "RUNNING") {
-      progress = Math.min(1.0, (liveMultiplier - 1.0) / (crashMultiplier - 1.0) || 0.01);
-    } else {
-      progress = 1.0;
-    }
-
-    const currX = startX + (endX - startX) * progress;
-    const currY = startY - (startY - endY) * Math.pow(progress, 1.75);
-
-    // Glowing Orange Flight Path
-    ctx.save();
-    ctx.strokeStyle = "#ff7300";
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = "#ff7300";
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.moveTo(startX, startY);
-    ctx.quadraticCurveTo(startX + (currX - startX) * 0.55, startY, currX, currY);
-    ctx.stroke();
-    ctx.restore();
-
-    // Flight angle
-    const dx = 1.0;
-    const dy = -1.75 * Math.pow(progress, 0.75) * ((startY - endY) / (endX - startX));
-    const angle = Math.atan2(dy, dx);
-
+    // UNPREDICTABLE FLIGHT TRAJECTORY:
+    // Path coordinates depend ONLY on elapsed flight time and liveMultiplier,
+    // never on crashMultiplier!
     if (gameState === "RUNNING" || gameState === "LAUNCHING") {
+      const flightTime = Math.max(0, (performance.now() - launchStartTime) / 1000);
+      
+      // Horizontal and vertical logarithmic progression that stays fluidly within bounds
+      const spanX = canvasWidth * 0.74;
+      const spanY = canvasHeight * 0.70;
+      
+      const t = flightTime;
+      const factorX = 1 - Math.exp(-0.14 * t);
+      const factorY = Math.pow(factorX, 1.35);
+      const microTurbulence = Math.sin(t * 3.8) * 3;
+
+      const currX = startX + spanX * factorX;
+      const currY = (startY - spanY * factorY) + microTurbulence;
+
+      // Add to live trail history
+      liveTrail.push({ x: currX, y: currY });
+      if (liveTrail.length > 200) liveTrail.shift();
+
+      // Render actual recorded trail
+      if (liveTrail.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = "#ff7300";
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = "#ff7300";
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
+        for (let i = 1; i < liveTrail.length; i++) {
+          ctx.lineTo(liveTrail[i].x, liveTrail[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // Compute heading angle
+      let angle = -0.35;
+      if (liveTrail.length >= 2) {
+        const p1 = liveTrail[liveTrail.length - 2];
+        const p2 = liveTrail[liveTrail.length - 1];
+        angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
+      }
+
       drawPlane(ctx, currX, currY, angle);
+
     } else if (gameState === "CRASHED" || gameState === "RESULT") {
-      if (debrisParticles.length === 0) createDebris(currX, currY);
+      // Draw static trail up to crash point
+      if (liveTrail.length > 1) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255, 115, 0, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
+        for (let i = 1; i < liveTrail.length; i++) {
+          ctx.lineTo(liveTrail[i].x, liveTrail[i].y);
+        }
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      const lastPoint = liveTrail.length > 0 ? liveTrail[liveTrail.length - 1] : { x: startX + 100, y: startY - 80 };
+      if (debrisParticles.length === 0) createDebris(lastPoint.x, lastPoint.y);
       debrisParticles.forEach(function (p) {
         if (p.life > 0) {
           ctx.fillStyle = p.color;
@@ -975,7 +1050,6 @@
       const elapsedSec = (timestamp - launchStartTime) / 1000;
       liveMultiplier = calculateMultiplier(elapsedSec);
 
-      // Telemetry Data Updates
       if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
       if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
       if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
@@ -990,10 +1064,9 @@
         if (!isNaN(target) && liveMultiplier >= target) cashOut();
       }
 
-      // Squadron Bot cashouts
       updateSquadronDuringFlight(liveMultiplier);
 
-      // Crash check
+      // Crash trigger (sudden, unpredictable)
       if (isManualCrashPending || liveMultiplier >= crashMultiplier) {
         isManualCrashPending = false;
         transitionTo("CRASHED");
@@ -1007,7 +1080,7 @@
   }
 
   //====================================================================
-  // WALLET & WITHDRAWAL CONTROLLER (BANK / UPI WITHDRAWAL + FIRESTORE)
+  // WALLET & WITHDRAWAL CONTROLLER (WITH FIRESTORE & IP TRACKING)
   //====================================================================
   function openWalletModal(tab) {
     if (!DOM.modalWallet) return;
@@ -1047,12 +1120,10 @@
   }
 
   function setupWalletController() {
-    // Tab switching
     if (DOM.tabWalletDeposit) DOM.tabWalletDeposit.addEventListener("click", function () { switchWalletTab("deposit"); });
     if (DOM.tabWalletWithdraw) DOM.tabWalletWithdraw.addEventListener("click", function () { switchWalletTab("withdraw"); });
     if (DOM.btnWalletClose) DOM.btnWalletClose.addEventListener("click", closeWalletModal);
 
-    // Open from header & cards
     if (DOM.btnOpenWallet) DOM.btnOpenWallet.addEventListener("click", function () { openWalletModal("deposit"); });
     if (DOM.cardWalletBottom) DOM.cardWalletBottom.addEventListener("click", function () { openWalletModal("deposit"); });
     if (DOM.btnOpenDepositDossier) DOM.btnOpenDepositDossier.addEventListener("click", function () {
@@ -1064,7 +1135,6 @@
       openWalletModal("deposit");
     });
 
-    // Payout Mode (Bank vs UPI)
     if (DOM.typeOptBank) {
       DOM.typeOptBank.addEventListener("click", function () {
         DOM.typeOptBank.classList.add("active");
@@ -1083,7 +1153,6 @@
       });
     }
 
-    // Quick percentages for withdrawal (25%, 50%, 75%, 100%)
     if (DOM.withdrawPercentChips) {
       DOM.withdrawPercentChips.forEach(function (chip) {
         chip.addEventListener("click", function () {
@@ -1094,10 +1163,11 @@
       });
     }
 
-    // Modal Deposit Action
+    // Modal Deposit Action (Saves Real-Money in Firestore)
     if (DOM.btnModalDepositConfirm) {
       DOM.btnModalDepositConfirm.addEventListener("click", function () {
         const amt = parseFloat(DOM.modalDepositInput ? DOM.modalDepositInput.value : 100) || 100;
+        const utr = (DOM.depositUtrInput ? DOM.depositUtrInput.value : "").trim();
         if (amt < 10) {
           showWalletAlert("Minimum deposit amount is ₹10", false);
           return;
@@ -1106,16 +1176,30 @@
         savedState.virtualBalance += amt;
         saveState();
         updatePlayerUIBalance();
-        showWalletAlert("Successfully deposited " + formatRupees(amt) + " into your Pilot Wallet!", true);
+        showWalletAlert("Successfully added " + formatRupees(amt) + " to your Pilot Account! Real funds are stored in Firestore.", true);
 
-        // Record in Firestore payment_logs
+        // Record in Firestore deposits and payment_logs with client IP
         if (window.AERO_FIREBASE && window.AERO_FIREBASE.db && window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) {
           const uid = window.AERO_FIREBASE.auth.currentUser.uid;
+          const txId = "DEP" + Date.now();
+          window.AERO_FIREBASE.db.collection("deposits").doc(txId).set({
+            txId: txId,
+            uid: uid,
+            email: savedState.userEmail,
+            callsign: savedState.callsign,
+            amount: amt,
+            utrNumber: utr || "DIRECT_ONLINE",
+            ip: clientIP,
+            status: "SUCCESS",
+            timestamp: new Date()
+          }).catch(function () {});
+
           window.AERO_FIREBASE.db.collection("payment_logs").add({
             uid: uid,
             callsign: savedState.callsign,
             amount: amt,
             type: "DEPOSIT",
+            ip: clientIP,
             timestamp: new Date(),
             status: "SUCCESS"
           }).catch(function () {});
@@ -1125,7 +1209,7 @@
       });
     }
 
-    // Modal Withdrawal Submit (Bank or UPI)
+    // Modal Withdrawal Request (Saves Real-Money in Firestore)
     if (DOM.btnSubmitWithdrawal) {
       DOM.btnSubmitWithdrawal.addEventListener("click", function () {
         const withdrawAmt = parseFloat(DOM.withdrawAmountInput ? DOM.withdrawAmountInput.value : 0);
@@ -1168,7 +1252,7 @@
             method: "BANK_TRANSFER",
             bankName: bankName,
             accountHolder: holderName,
-            accountNumberMasked: "••••" + accNo.slice(-4),
+            accountNumber: accNo,
             ifsc: ifsc
           };
         } else {
@@ -1187,24 +1271,26 @@
           };
         }
 
-        // Process Withdrawal
+        // Deduct from live balance
         savedState.virtualBalance -= withdrawAmt;
         saveState();
         updatePlayerUIBalance();
 
-        const txId = "TXN" + Math.floor(100000 + Math.random() * 900000);
-        showWalletAlert("WITHDRAWAL APPROVED: " + formatRupees(withdrawAmt) + " sent via " + (isBank ? "IMPS Bank Transfer" : "UPI") + ". Ref: #" + txId, true);
+        const txId = "WTH" + Math.floor(100000 + Math.random() * 900000);
+        showWalletAlert("WITHDRAWAL SUBMITTED: " + formatRupees(withdrawAmt) + " request registered for " + (isBank ? "Bank IMPS" : "UPI") + ". Ref: #" + txId, true);
 
-        // Log in Firestore
+        // Record in Firestore withdrawals collection with user IP
         if (window.AERO_FIREBASE && window.AERO_FIREBASE.db && window.AERO_FIREBASE.auth && window.AERO_FIREBASE.auth.currentUser) {
           const uid = window.AERO_FIREBASE.auth.currentUser.uid;
-          window.AERO_FIREBASE.db.collection("withdrawals").add({
+          window.AERO_FIREBASE.db.collection("withdrawals").doc(txId).set({
+            txId: txId,
             uid: uid,
+            email: savedState.userEmail,
             callsign: savedState.callsign,
             amount: withdrawAmt,
             details: withdrawalDetails,
-            txId: txId,
-            status: "PROCESSED",
+            ip: clientIP,
+            status: "PENDING",
             timestamp: new Date()
           }).catch(function () {});
 
@@ -1214,16 +1300,16 @@
             amount: withdrawAmt,
             type: "WITHDRAWAL",
             method: withdrawalDetails.method,
+            ip: clientIP,
             timestamp: new Date(),
-            status: "SUCCESS"
+            status: "PENDING"
           }).catch(function () {});
         }
 
-        addFeedItem(savedState.callsign + " withdrew " + formatRupees(withdrawAmt) + " to " + (isBank ? "Bank" : "UPI"), "cashout");
+        addFeedItem(savedState.callsign + " requested withdrawal of " + formatRupees(withdrawAmt), "cashout");
       });
     }
 
-    // Modal Deposit Chip buttons (+50, +100, +500...)
     if (DOM.modalDepositChips) {
       DOM.modalDepositChips.forEach(function (chip) {
         chip.addEventListener("click", function () {
@@ -1236,7 +1322,6 @@
       });
     }
 
-    // Modal Payment Methods (UPI, Paytm, NetBanking, Card)
     if (DOM.modalPaymentMethods) {
       DOM.modalPaymentMethods.forEach(function (method) {
         method.addEventListener("click", function () {
@@ -1252,6 +1337,8 @@
   //====================================================================
   function updateCareerTables() {
     if (DOM.dossierRole) DOM.dossierRole.textContent = (savedState.userRole || "PILOT").toUpperCase();
+    if (DOM.dossierCallsign) DOM.dossierCallsign.textContent = savedState.callsign || "MAVERICK";
+    if (DOM.dossierUserIp) DOM.dossierUserIp.textContent = clientIP || "Detecting...";
     if (DOM.dossierRoundsPlayed) DOM.dossierRoundsPlayed.textContent = savedState.career.roundsPlayed;
     if (DOM.dossierRoundsWon) DOM.dossierRoundsWon.textContent = savedState.career.roundsWon;
     if (DOM.dossierRoundsLost) DOM.dossierRoundsLost.textContent = savedState.career.roundsLost;
@@ -1287,13 +1374,155 @@
   }
 
   //====================================================================
+  // GAME MASTER ADMIN CONTROLS & FIRESTORE DATABASE INSPECTION
+  //====================================================================
+  function setupAdminPortal() {
+    const adminTabs = [DOM.tabAdminFlight, DOM.tabAdminUsers, DOM.tabAdminWithdrawals];
+    const adminPanels = [DOM.adminPanelFlight, DOM.adminPanelUsers, DOM.adminPanelWithdrawals];
+
+    function switchAdminTab(tabName) {
+      adminTabs.forEach(function (t) { if (t) t.classList.remove("active"); });
+      adminPanels.forEach(function (p) { if (p) p.classList.remove("active"); });
+
+      if (tabName === "flight") {
+        if (DOM.tabAdminFlight) DOM.tabAdminFlight.classList.add("active");
+        if (DOM.adminPanelFlight) DOM.adminPanelFlight.classList.add("active");
+      } else if (tabName === "users") {
+        if (DOM.tabAdminUsers) DOM.tabAdminUsers.classList.add("active");
+        if (DOM.adminPanelUsers) DOM.adminPanelUsers.classList.add("active");
+        fetchAdminUsers();
+      } else if (tabName === "withdrawals") {
+        if (DOM.tabAdminWithdrawals) DOM.tabAdminWithdrawals.classList.add("active");
+        if (DOM.adminPanelWithdrawals) DOM.adminPanelWithdrawals.classList.add("active");
+        fetchAdminWithdrawals();
+      }
+    }
+
+    if (DOM.tabAdminFlight) DOM.tabAdminFlight.addEventListener("click", function () { switchAdminTab("flight"); });
+    if (DOM.tabAdminUsers) DOM.tabAdminUsers.addEventListener("click", function () { switchAdminTab("users"); });
+    if (DOM.tabAdminWithdrawals) DOM.tabAdminWithdrawals.addEventListener("click", function () { switchAdminTab("withdrawals"); });
+
+    if (DOM.btnRefreshAdminUsers) DOM.btnRefreshAdminUsers.addEventListener("click", fetchAdminUsers);
+    if (DOM.btnRefreshAdminWithdrawals) DOM.btnRefreshAdminWithdrawals.addEventListener("click", fetchAdminWithdrawals);
+  }
+
+  // Fetch all registered users from Firestore for Admin
+  function fetchAdminUsers() {
+    if (!DOM.adminUsersTable || !window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    const tbody = DOM.adminUsersTable.querySelector("tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Fetching live users...</td></tr>';
+
+    window.AERO_FIREBASE.db.collection("users").get()
+      .then(function (snapshot) {
+        if (snapshot.empty) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No users registered yet.</td></tr>';
+          return;
+        }
+
+        let html = "";
+        snapshot.forEach(function (doc) {
+          const u = doc.data();
+          html += '<tr>' +
+            '<td style="color:var(--accent-amber); font-weight:700;">' + (u.callsign || "PILOT") + '</td>' +
+            '<td>' + (u.email || "—") + '</td>' +
+            '<td style="color:var(--status-info);">' + (u.lastIP || "—") + '</td>' +
+            '<td style="color:var(--status-success); font-weight:700;">' + formatRupees(u.balance || 0) + '</td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+      })
+      .catch(function (err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--status-danger);">Error fetching users: ' + err.message + '</td></tr>';
+      });
+  }
+
+  // Fetch all withdrawal requests from Firestore for Admin Approval
+  function fetchAdminWithdrawals() {
+    if (!DOM.adminWithdrawalsTable || !window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+    const tbody = DOM.adminWithdrawalsTable.querySelector("tbody");
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Fetching withdrawal requests...</td></tr>';
+
+    window.AERO_FIREBASE.db.collection("withdrawals").get()
+      .then(function (snapshot) {
+        if (snapshot.empty) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No withdrawal requests found.</td></tr>';
+          return;
+        }
+
+        let html = "";
+        snapshot.forEach(function (doc) {
+          const w = doc.data();
+          const isPending = w.status === "PENDING";
+          const methodLabel = w.details && w.details.method === "BANK_TRANSFER" ? "BANK" : "UPI";
+          
+          let actionHtml = '<span style="color:' + (w.status === "APPROVED" ? "var(--status-success)" : "var(--status-danger)") + '; font-weight:700;">' + (w.status || "COMPLETED") + '</span>';
+          if (isPending) {
+            actionHtml = '<button type="button" class="btn-admin-action-sm btn-admin-approve" data-doc="' + doc.id + '">APPROVE</button> ' +
+              '<button type="button" class="btn-admin-action-sm btn-admin-reject" data-doc="' + doc.id + '" data-uid="' + w.uid + '" data-amt="' + w.amount + '">REJECT</button>';
+          }
+
+          html += '<tr>' +
+            '<td>' + (w.callsign || "PILOT") + '<br><small style="color:var(--text-dim);">' + (w.ip || "") + '</small></td>' +
+            '<td style="color:var(--status-success); font-weight:700;">' + formatRupees(w.amount) + '</td>' +
+            '<td>' + methodLabel + '</td>' +
+            '<td>' + actionHtml + '</td>' +
+            '</tr>';
+        });
+        tbody.innerHTML = html;
+
+        // Bind Approve / Reject buttons
+        tbody.querySelectorAll(".btn-admin-approve").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const docId = btn.getAttribute("data-doc");
+            window.AERO_FIREBASE.db.collection("withdrawals").doc(docId).update({
+              status: "APPROVED",
+              approvedAt: new Date()
+            }).then(function () {
+              fetchAdminWithdrawals();
+            });
+          });
+        });
+
+        tbody.querySelectorAll(".btn-admin-reject").forEach(function (btn) {
+          btn.addEventListener("click", function () {
+            const docId = btn.getAttribute("data-doc");
+            const uid = btn.getAttribute("data-uid");
+            const refundAmt = parseFloat(btn.getAttribute("data-amt")) || 0;
+
+            window.AERO_FIREBASE.db.collection("withdrawals").doc(docId).update({
+              status: "REJECTED",
+              rejectedAt: new Date()
+            }).then(function () {
+              // Refund user balance
+              if (uid && refundAmt > 0) {
+                const userDoc = window.AERO_FIREBASE.db.collection("users").doc(uid);
+                userDoc.get().then(function (d) {
+                  if (d.exists) {
+                    const curr = d.data().balance || 0;
+                    userDoc.update({ balance: curr + refundAmt });
+                  }
+                });
+              }
+              fetchAdminWithdrawals();
+            });
+          });
+        });
+      })
+      .catch(function (err) {
+        tbody.innerHTML = '<tr><td colspan="4" style="color:var(--status-danger);">Error: ' + err.message + '</td></tr>';
+      });
+  }
+
+  //====================================================================
   // EVENT LISTENERS & SETUP
   //====================================================================
   function setupEventListeners() {
-    // Action Takeoff button
     if (DOM.btnAction) DOM.btnAction.addEventListener("click", handleActionClick);
 
-    // Controls Tabs (Flight Control vs History)
     if (DOM.tabCtrlBetting && DOM.tabCtrlHistory) {
       DOM.tabCtrlBetting.addEventListener("click", function () {
         DOM.tabCtrlBetting.classList.add("active");
@@ -1311,7 +1540,6 @@
       });
     }
 
-    // Quick Stake Chips ([10, 25, 50, 100], [200, 500, 1K, 5K])
     if (DOM.quickStakeChips) {
       DOM.quickStakeChips.forEach(function (chip) {
         chip.addEventListener("click", function () {
@@ -1324,7 +1552,6 @@
       });
     }
 
-    // Stepper buttons
     if (DOM.btnStakeInc) {
       DOM.btnStakeInc.addEventListener("click", function () {
         let val = getCurrentStakeInput() + 10;
@@ -1347,7 +1574,6 @@
       });
     }
 
-    // Audio toggle
     if (DOM.btnSoundToggle) {
       DOM.btnSoundToggle.addEventListener("click", function () {
         savedState.audioEnabled = !savedState.audioEnabled;
@@ -1355,7 +1581,6 @@
       });
     }
 
-    // Fullscreen toggle
     if (DOM.btnFullscreenToggle) {
       DOM.btnFullscreenToggle.addEventListener("click", function () {
         if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(function () {});
@@ -1363,7 +1588,6 @@
       });
     }
 
-    // Rules toggle
     if (DOM.btnRulesToggle) {
       DOM.btnRulesToggle.addEventListener("click", function () {
         if (DOM.modalOnboarding) DOM.modalOnboarding.classList.add("active");
@@ -1376,7 +1600,6 @@
       if (DOM.modalOnboarding) DOM.modalOnboarding.classList.remove("active");
     });
 
-    // Profile Dossier Modal
     if (DOM.profileChip) {
       DOM.profileChip.addEventListener("click", function () {
         if (DOM.modalProfile) {
@@ -1392,7 +1615,6 @@
       if (DOM.modalProfile) DOM.modalProfile.classList.remove("active");
     });
 
-    // Reset stats
     if (DOM.btnResetStats) {
       DOM.btnResetStats.addEventListener("click", function () {
         if (confirm("Reset pilot career telemetry stats?")) {
@@ -1415,7 +1637,6 @@
       });
     }
 
-    // Sign out
     if (DOM.btnAuthSignout) {
       DOM.btnAuthSignout.addEventListener("click", function () {
         if (userDocUnsubscribe) {
@@ -1432,7 +1653,6 @@
       });
     }
 
-    // Game Master Drawer
     if (DOM.btnGmToggle) {
       DOM.btnGmToggle.addEventListener("click", function () {
         if (DOM.drawerGM) DOM.drawerGM.classList.add("active");
@@ -1460,8 +1680,30 @@
         if (DOM.gmFleetValue) DOM.gmFleetValue.textContent = fleetCount;
       });
     }
+    if (DOM.gmTargetInput) {
+      DOM.gmTargetInput.addEventListener("input", function () {
+        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+          const manual = parseFloat(DOM.gmTargetInput.value);
+          if (!isNaN(manual) && manual >= 1.01) {
+            crashMultiplier = manual;
+            if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          }
+        }
+      });
+    }
+    if (DOM.gmOverrideEnabled) {
+      DOM.gmOverrideEnabled.addEventListener("change", function () {
+        if (DOM.gmOverrideEnabled.checked) {
+          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 2.5) || 2.5;
+          crashMultiplier = manual;
+          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        } else {
+          crashMultiplier = generateCrashPoint();
+          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        }
+      });
+    }
 
-    // Payment onboarding screen proceed
     if (DOM.btnPaymentProceed) {
       DOM.btnPaymentProceed.addEventListener("click", function () {
         switchScreen("GAME");
@@ -1514,7 +1756,6 @@
       });
     }
 
-    // Auth State Changed Listener
     if (window.AERO_FIREBASE && window.AERO_FIREBASE.auth) {
       window.AERO_FIREBASE.auth.onAuthStateChanged(function (user) {
         if (user) {
@@ -1537,7 +1778,6 @@
     showAuthStatus("Authenticating with Firebase...", "success");
 
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.auth) {
-      // Offline fallback
       savedState.isLoggedIn = true;
       savedState.userEmail = email;
       savedState.callsign = callsign;
@@ -1579,6 +1819,17 @@
     savedState.userRole = role;
     savedState.isLoggedIn = true;
 
+    // Log IP and Login in Firestore
+    if (db) {
+      db.collection("login_logs").add({
+        uid: uid,
+        email: email,
+        ip: clientIP,
+        authMode: authMode,
+        timestamp: new Date()
+      }).catch(function () {});
+    }
+
     if (!db) {
       saveState();
       completeLoginRouting(authMode);
@@ -1592,6 +1843,10 @@
         savedState.callsign = data.callsign || customCallsign || savedState.callsign;
         savedState.virtualBalance = typeof data.balance === "number" ? data.balance : savedState.virtualBalance;
         if (data.career) savedState.career = Object.assign(savedState.career, data.career);
+        userRef.set({
+          lastIP: clientIP,
+          lastLoginAt: new Date()
+        }, { merge: true }).catch(function () {});
       } else {
         savedState.callsign = customCallsign || email.split("@")[0].toUpperCase() || "MAVERICK";
         savedState.virtualBalance = CONFIG.INITIAL_BALANCE;
@@ -1601,6 +1856,7 @@
           role: role,
           balance: savedState.virtualBalance,
           createdAt: new Date(),
+          lastIP: clientIP,
           career: savedState.career
         }).catch(function () {});
       }
@@ -1625,6 +1881,10 @@
           const data = doc.data();
           if (typeof data.balance === "number" && data.balance !== savedState.virtualBalance) {
             savedState.virtualBalance = data.balance;
+            updatePlayerUIBalance();
+          }
+          if (data.callsign && data.callsign !== savedState.callsign) {
+            savedState.callsign = data.callsign;
             updatePlayerUIBalance();
           }
         }
@@ -1658,9 +1918,9 @@
     setupEventListeners();
     setupWalletController();
     setupAuthFlow();
+    setupAdminPortal();
     resizeCanvas();
 
-    // Start Splash Progress Animation
     let splashProgress = 0;
     const splashInterval = setInterval(function () {
       splashProgress += 4;
@@ -1675,7 +1935,7 @@
         transitionTo("BETTING");
         requestAnimationFrame(gameLoop);
       }
-    }, 45);
+    }, 40);
   }
 
   window.addEventListener("DOMContentLoaded", init);

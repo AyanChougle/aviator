@@ -48,6 +48,7 @@
 
   <!-- ========================================== -->
   <!-- 02. FIREBASE AUTHENTICATION SCREEN         -->
+  <!-- (CLEAN 2-TAB USER PORTAL: NO ADMIN TAB)    -->
   <!-- ========================================== -->
   <section id="screen-auth" class="app-screen" aria-label="Player Sign In">
     <div class="auth-card">
@@ -62,17 +63,17 @@
         <p id="auth-main-desc">Sign in or create your Pilot ID to access the flight deck.</p>
       </header>
 
-      <div class="auth-tabs" role="tablist">
+      <!-- PURE USER TABS (ADMIN IS DETECTED AUTOMATICALLY AT BACKEND) -->
+      <div class="auth-tabs auth-tabs-clean" role="tablist">
         <button type="button" class="auth-tab-btn active" id="tab-auth-login" data-mode="login">PILOT LOGIN</button>
         <button type="button" class="auth-tab-btn" id="tab-auth-register" data-mode="register">CREATE ID</button>
-        <button type="button" class="auth-tab-btn admin-tab" id="tab-auth-admin" data-mode="admin">ADMIN PORTAL</button>
       </div>
 
       <div id="auth-status-box" class="auth-status-box"></div>
 
       <form id="firebase-auth-form" class="auth-form" onsubmit="return false;" autocomplete="off">
         <div class="form-group" id="group-auth-callsign" style="display: none;">
-          <label for="auth-callsign-input">PILOT CALLSIGN</label>
+          <label for="auth-callsign-input">PILOT CALLSIGN / USERNAME</label>
           <div class="input-with-icon">
             <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
             <input type="text" id="auth-callsign-input" name="callsign" placeholder="MAVERICK" maxlength="16" spellcheck="false">
@@ -94,7 +95,7 @@
             <svg class="field-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
             <input type="password" id="auth-password-input" name="password" placeholder="••••••••" autocomplete="current-password" required>
           </div>
-          <span class="field-hint" id="auth-hint">AUTHENTICATED VIA FIREBASE [PROJECT: CARRENTPEWEB]</span>
+          <span class="field-hint" id="auth-hint">SECURE CLOUD AUTHENTICATION</span>
         </div>
 
         <div class="auth-disclaimer-box" id="auth-notice-box">
@@ -118,7 +119,7 @@
           <svg class="brand-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2 L14.5 9 L22 12.5 L22 14.5 L14.5 13 L14.5 18.5 L17.5 20.5 L17.5 22.5 L12 21 L6.5 22.5 L6.5 20.5 L9.5 18.5 L9.5 13 L2 14.5 L2 12.5 L9.5 9 Z"/></svg>
           <span>PILOT WALLET</span>
         </div>
-        <h1>DEPOSIT FUNDS</h1>
+        <h1>DEPOSIT REAL FUNDS</h1>
         <p>Deposit funds to fuel your flight stakes or proceed with your ₹10 bonus.</p>
       </header>
 
@@ -165,7 +166,7 @@
         <label>PAYMENT METHOD</label>
         <div class="payment-methods-grid">
           <div class="payment-method-item selected" data-method="upi">
-            <strong>UPI</strong>
+            <strong>UPI / QR</strong>
             <span>GPay / PhonePe</span>
           </div>
           <div class="payment-method-item" data-method="paytm">
@@ -225,8 +226,8 @@
       </div>
 
       <div class="header-right">
-        <!-- GAME MASTER BUTTON: STRICTLY FOR ADMIN ONLY -->
-        <button type="button" id="btn-gm-toggle" class="btn-game-master" style="display: none;" title="Game Master Controls (Admin Only)">
+        <!-- GAME MASTER BUTTON: STRICTLY HIDDEN UNLESS USER HAS ADMIN ROLE -->
+        <button type="button" id="btn-gm-toggle" class="btn-game-master" style="display: none !important;" title="Game Master Controls (Admin Only)">
           <svg class="crown-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M5 16L3 5L8.5 10L12 4L15.5 10L21 5L19 16H5M19 19C19 19.6 18.6 20 18 20H6C5.4 20 5 19.6 5 19V18H19V19Z"/></svg>
           <span>GAME MASTER</span>
         </button>
@@ -419,7 +420,7 @@
           <div class="telemetry-corner top-right">
             <div class="status-indicator-box">
               <span class="status-lbl">STATUS</span>
-              <span class="status-mode">MANUAL</span>
+              <span class="status-mode">LIVE FLIGHT</span>
               <span class="status-dot-orange"></span>
               <span class="status-active-text">ACTIVE</span>
             </div>
@@ -431,7 +432,7 @@
             <div class="ladder-tick" style="top: 25%;"><span>7.5x</span></div>
             <div class="ladder-tick" style="top: 50%;"><span>5.0x</span></div>
             <div class="ladder-tick" style="top: 75%;"><span>2.5x</span></div>
-            <div class="ladder-tick active" style="top: 92%;"><span>1.0x</span><div class="ladder-indicator-marker"></div></div>
+            <div class="ladder-tick active" id="ladder-active-tick" style="top: 92%;"><span>1.0x</span><div class="ladder-indicator-marker"></div></div>
           </div>
 
           <!-- TIME AXIS (BOTTOM OF CANVAS) -->
@@ -539,8 +540,8 @@
             <div id="modal-wallet-balance-val" class="bal-number">₹10.00</div>
           </div>
           <div class="bal-badge">
-            <span>INSTANT PAYOUTS</span>
-            <strong>24x7 ACTIVE</strong>
+            <span>REAL-TIME FIRESTORE</span>
+            <strong>INSTANT PAYOUTS</strong>
           </div>
         </div>
 
@@ -574,7 +575,7 @@
             <label>PAYMENT METHOD</label>
             <div class="payment-methods-grid">
               <div class="payment-method-item selected" data-method="upi">
-                <strong>UPI</strong>
+                <strong>UPI / QR</strong>
                 <span>GPay / PhonePe</span>
               </div>
               <div class="payment-method-item" data-method="paytm">
@@ -590,6 +591,11 @@
                 <span>Visa / RuPay</span>
               </div>
             </div>
+          </div>
+
+          <div class="form-group">
+            <label for="deposit-utr-input">TRANSACTION UTR / REF NUMBER (OPTIONAL)</label>
+            <input type="text" id="deposit-utr-input" placeholder="e.g. 423984729182 / UPI Ref ID" maxlength="24">
           </div>
 
           <button type="button" id="btn-modal-deposit-confirm" class="btn-deposit-action">
@@ -712,8 +718,12 @@
 
       <div class="modal-body">
         <div class="dossier-section">
-          <h3>FLIGHT STATISTICS</h3>
+          <h3>PILOT IDENTITY & LOCATION</h3>
           <div class="dossier-grid">
+            <div class="dossier-item">
+              <span class="label">CALLSIGN:</span>
+              <span id="dossier-callsign" class="value" style="color:var(--accent-amber);">MAVERICK</span>
+            </div>
             <div class="dossier-item">
               <span class="label">SECURITY LEVEL:</span>
               <span id="dossier-user-role" class="value" style="color:var(--status-warning);">PILOT</span>
@@ -722,6 +732,16 @@
               <span class="label">WALLET BALANCE:</span>
               <span id="dossier-display-balance" class="value" style="color:var(--status-success);">₹10.00</span>
             </div>
+            <div class="dossier-item">
+              <span class="label">IP ADDRESS:</span>
+              <span id="dossier-user-ip" class="value" style="color:var(--text-muted); font-size:10px;">DETECTING...</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="dossier-section">
+          <h3>FLIGHT STATISTICS</h3>
+          <div class="dossier-grid">
             <div class="dossier-item">
               <span class="label">ROUNDS PLAYED:</span>
               <span id="dossier-rounds-played" class="value">0</span>
@@ -774,46 +794,106 @@
   <!-- ========================================== -->
   <aside id="drawer-game-master" class="drawer" role="dialog" aria-modal="true" aria-labelledby="gm-drawer-heading">
     <header class="drawer-header">
-      <h2 id="gm-drawer-heading">👑 GAME MASTER CONTROLS [ADMIN]</h2>
+      <h2 id="gm-drawer-heading">👑 GAME MASTER PORTAL [ADMIN]</h2>
       <button type="button" id="btn-gm-close" class="drawer-close" aria-label="Close Game Master">×</button>
     </header>
 
+    <!-- ADMIN DRAWER TABS -->
+    <div class="admin-drawer-tabs">
+      <button type="button" class="admin-tab-btn active" id="tab-admin-flight" data-tab="flight">🎮 CONTROLS</button>
+      <button type="button" class="admin-tab-btn" id="tab-admin-users" data-tab="users">👥 USERS & IP</button>
+      <button type="button" class="admin-tab-btn" id="tab-admin-withdrawals" data-tab="withdrawals">💸 WITHDRAWALS</button>
+    </div>
+
     <div class="drawer-content">
-      <div class="drawer-section">
-        <h3>ROUND OVERRIDE</h3>
-        <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
-          <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL TARGET
-        </label>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
-          <label for="gm-target-input" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">TARGET MULTIPLIER:</label>
-          <input type="number" id="gm-target-input" value="2.50" step="0.1" min="1.01" max="1000.0"
-            style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:6px 10px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
-        </div>
-        <div class="drawer-grid-2" style="margin-top:12px;">
-          <button type="button" id="gm-btn-force-crash" class="btn-danger">FORCE CRASH NOW</button>
-          <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">PAUSE SIMULATION</button>
-        </div>
-      </div>
-
-      <div class="drawer-section">
-        <h3>FLEET SIMULATION</h3>
-        <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:6px;">
-          <span style="color:var(--text-dim);">PILOT FLEET SIZE:</span>
-          <span id="gm-fleet-value" style="color:var(--accent-amber);font-weight:700;">150</span>
-        </div>
-        <input type="range" id="gm-fleet-count" min="10" max="300" value="150" style="width:100%;accent-color:var(--accent-amber);">
-      </div>
-
-      <div class="drawer-section">
-        <h3>LIVE ENGINE TELEMETRY</h3>
-        <div class="live-metrics-grid">
-          <div class="dossier-item">
-            <span class="label">LIVE MULT:</span>
-            <span id="debug-live-multi" class="value" style="color:var(--accent-amber);">1.00x</span>
+      <!-- 1. FLIGHT CONTROLS -->
+      <div id="admin-panel-flight" class="admin-panel-view active">
+        <div class="drawer-section">
+          <h3>ROUND OVERRIDE</h3>
+          <label style="display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:11px;cursor:pointer;">
+            <input type="checkbox" id="gm-override-enabled" style="accent-color:var(--accent-amber);"> ENABLE MANUAL TARGET
+          </label>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;">
+            <label for="gm-target-input" style="font-family:var(--font-mono);font-size:11px;color:var(--text-dim);">TARGET MULTIPLIER:</label>
+            <input type="number" id="gm-target-input" value="2.50" step="0.1" min="1.01" max="1000.0"
+              style="width:100px;background:var(--bg-surface-2);border:1px solid var(--border-mid);color:var(--text-main);padding:6px 10px;font-family:var(--font-mono);border-radius:var(--radius-sm);">
           </div>
-          <div class="dossier-item">
-            <span class="label">TARGET MULT:</span>
-            <span id="debug-target-multi" class="value">NONE</span>
+          <div class="drawer-grid-2" style="margin-top:12px;">
+            <button type="button" id="gm-btn-force-crash" class="btn-danger">FORCE CRASH NOW</button>
+            <button type="button" id="gm-btn-pause-toggle" class="btn-secondary">PAUSE SIMULATION</button>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <h3>FLEET SIMULATION</h3>
+          <div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:11px;margin-bottom:6px;">
+            <span style="color:var(--text-dim);">PILOT FLEET SIZE:</span>
+            <span id="gm-fleet-value" style="color:var(--accent-amber);font-weight:700;">150</span>
+          </div>
+          <input type="range" id="gm-fleet-count" min="10" max="300" value="150" style="width:100%;accent-color:var(--accent-amber);">
+        </div>
+
+        <div class="drawer-section">
+          <h3>LIVE ENGINE TELEMETRY</h3>
+          <div class="live-metrics-grid">
+            <div class="dossier-item">
+              <span class="label">LIVE MULT:</span>
+              <span id="debug-live-multi" class="value" style="color:var(--accent-amber);">1.00x</span>
+            </div>
+            <div class="dossier-item">
+              <span class="label">TARGET MULT:</span>
+              <span id="debug-target-multi" class="value" style="color:var(--status-warning); font-weight:800;">2.50x</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. FIRESTORE USERS & IP DIRECTORY -->
+      <div id="admin-panel-users" class="admin-panel-view">
+        <div class="drawer-section">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>REGISTERED PILOTS & IPS</h3>
+            <button type="button" id="btn-refresh-admin-users" class="btn-secondary" style="padding:2px 8px; font-size:10px;">REFRESH</button>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-data-table" id="admin-users-table">
+              <thead>
+                <tr>
+                  <th>PILOT</th>
+                  <th>EMAIL</th>
+                  <th>IP ADDRESS</th>
+                  <th>BALANCE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Loading users from Firestore...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. REAL MONEY WITHDRAWALS REQUESTS -->
+      <div id="admin-panel-withdrawals" class="admin-panel-view">
+        <div class="drawer-section">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>PENDING WITHDRAWALS</h3>
+            <button type="button" id="btn-refresh-admin-withdrawals" class="btn-secondary" style="padding:2px 8px; font-size:10px;">REFRESH</button>
+          </div>
+          <div class="admin-table-container">
+            <table class="admin-data-table" id="admin-withdrawals-table">
+              <thead>
+                <tr>
+                  <th>PILOT</th>
+                  <th>AMOUNT</th>
+                  <th>METHOD</th>
+                  <th>ACTION</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="4" style="text-align:center; color:var(--text-dim);">Loading withdrawal requests...</td></tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -837,16 +917,16 @@
             <p>Set your stake during the 8-second countdown window. Minimum bet is ₹10 and maximum is ₹8,000.</p>
           </div>
           <div class="onboarding-step">
-            <h4>02 // MULTIPLIER ACCELERATION</h4>
-            <p>As the aircraft climbs into the high-altitude radar, the payout multiplier ascends exponentially from 1.00x upward.</p>
+            <h4>02 // UNPREDICTABLE MULTIPLIER FLIGHT</h4>
+            <p>As the aircraft climbs into the high-altitude radar, the payout multiplier ascends dynamically with natural aerodynamic acceleration.</p>
           </div>
           <div class="onboarding-step">
             <h4>03 // CASH OUT BEFORE FLEW AWAY</h4>
-            <p>Hit CASH OUT or press SPACEBAR before the aircraft crashes to secure your winnings in Rupees (₹).</p>
+            <p>Hit CASH OUT or press SPACEBAR before the aircraft flies away to secure your winnings in Rupees (₹).</p>
           </div>
           <div class="onboarding-step">
             <h4>04 // INSTANT BANK & UPI WITHDRAWAL</h4>
-            <p>Your winnings can be instantly withdrawn to any Bank Account via IMPS or directly to your UPI ID 24x7.</p>
+            <p>Your real-money balance can be instantly withdrawn to any Bank Account via IMPS or directly to your UPI ID 24x7.</p>
           </div>
         </div>
       </div>
