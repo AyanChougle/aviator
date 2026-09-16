@@ -3798,3 +3798,58 @@ input:-webkit-autofill:active {
   color: var(--accent-orange);
   border: 1px solid rgba(255, 107, 34, 0.3);
 }
+
+/* ===================================================================
+   RESPONSIVE LAYOUT & VERTICAL ORDER FIX
+   (Canvas Viewport -> Betting & Cashout Panel -> Squadron Bets & Feed)
+   =================================================================== */
+@media (max-width: 1024px) {
+  #screen-game {
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .cockpit-grid {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 48px - 30px - 22px);
+    overflow: visible;
+  }
+
+  .flight-arena-panel {
+    display: contents;
+  }
+
+  .arena-viewport {
+    order: 1;
+    width: 100%;
+    min-height: 280px;
+    height: 42vh;
+    max-height: 380px;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-dim);
+  }
+
+  .cockpit-controls-panel {
+    order: 2;
+    width: 100%;
+    border-right: none;
+    border-bottom: 2px solid var(--border-dim);
+    padding: 12px;
+    overflow: visible;
+  }
+
+  .flight-floor-dock {
+    order: 3;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    background-color: var(--bg-surface-1);
+    overflow: visible;
+    border-top: 1px solid var(--border-dim);
+  }
+}

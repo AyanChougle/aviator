@@ -433,9 +433,9 @@
   setInterval(updateLiveClock, 1000);
 
   //====================================================================
-  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE (REALISTIC CEILING UP TO 1000.00x FOR MANUAL OVERRIDES)
+  // UNPREDICTABLE MULTIPLIER & FLIGHT ENGINE (STRICT 200.00x CEILING)
   //====================================================================
-  const MAX_POSSIBLE_MULTIPLIER = 1000.00;
+  const MAX_POSSIBLE_MULTIPLIER = 200.00;
 
   // High-performance deterministic pseudo-random generator (Mulberry32)
   function seededRandom(seed) {
@@ -463,9 +463,9 @@
     } else if (r < 0.94) {
       point = 5.51 + ((r - 0.82) / 0.12) * 6.49; // 5.51x - 12.00x
     } else {
-      point = 12.01 + ((r - 0.94) / 0.06) * 15.99; // 12.01x - 28.00x
+      point = 12.01 + ((r - 0.94) / 0.06) * 187.99; // 12.01x - 200.00x
     }
-    return Math.min(30.00, Math.floor(point * 100) / 100);
+    return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(point * 100) / 100);
   }
 
   function calculateMultiplier(elapsedSec) {
@@ -498,18 +498,31 @@
       return;
     }
 
+    const rNum = Number(roundNum);
     try {
       activeBetsUnsubscribe = window.AERO_FIREBASE.db.collection("active_bets")
-        .where("round", "==", roundNum)
+        .where("round", "==", rNum)
         .onSnapshot(function (snapshot) {
           const betsArr = [];
           snapshot.forEach(function (doc) {
             betsArr.push(doc.data());
           });
+          betsArr.sort(function (a, b) { return (a.placedAt || 0) - (b.placedAt || 0); });
           realSquadronBets = betsArr;
           renderSquadronTable();
-        }, function () {
-          renderSquadronTable();
+        }, function (err) {
+          console.warn("[AeroCrash] active_bets listener note:", err.message);
+          // Fallback snapshot
+          window.AERO_FIREBASE.db.collection("active_bets").limit(100).get().then(function (snap) {
+            const betsArr = [];
+            snap.forEach(function (doc) {
+              const d = doc.data();
+              if (Number(d.round) === rNum) betsArr.push(d);
+            });
+            betsArr.sort(function (a, b) { return (a.placedAt || 0) - (b.placedAt || 0); });
+            realSquadronBets = betsArr;
+            renderSquadronTable();
+          }).catch(function () {});
         });
     } catch (e) {
       renderSquadronTable();
@@ -529,7 +542,7 @@
 
     let html = "";
     realSquadronBets.forEach(function (b, index) {
-      const isCashed = b.hasCashedOut;
+      const isCashed = b.hasCashedOut || b.status === "CASHED_OUT";
       const isCrash = gameState === "CRASHED" && !isCashed;
       const statusClass = isCashed ? "cashed-out" : isCrash ? "crashed" : "placed-true";
       const cashoutText = isCashed ? formatRupees(b.cashoutValue || (b.stake * (b.targetMulti || 1))) : "—";
@@ -565,7 +578,7 @@
 
   //====================================================================
   // UNIVERSAL REAL-TIME MULTIPLAYER SYNCHRONIZATION ENGINE
-  // (Deterministic Epoch Clock + Real-time Cloud Firestore Master Sync)
+  // (Deterministic Epoch Clock + Cloud Firestore Real-Time Master Sync)
   //====================================================================
   const localSessionId = "pilot_" + Math.random().toString(36).substring(2, 9);
   let isGlobalSyncActive = false;
@@ -575,8 +588,6 @@
   // Compute deterministic flight time for a given crash multiplier
   function getFlightDurationSec(targetMulti) {
     if (targetMulti <= 1.0) return 0.5;
-    // inverse of calculateMultiplier: multi = exp(0.048 * sec^1.10)
-    // ln(multi) = 0.048 * sec^1.10  =>  sec = (ln(multi) / 0.048)^(1 / 1.10)
     const logM = Math.log(Math.max(1.001, targetMulti));
     const sec = Math.pow(logM / 0.048, 1 / 1.10);
     return Math.max(0.5, Math.min(60, sec));
@@ -588,18 +599,15 @@
     const now = (typeof epochMs === "number") ? epochMs : Date.now();
     const diff = Math.max(0, now - epochBase);
 
-    // Approximate average cycle duration: 8000 + 1000 + ~8500 + 1600 + 2000 = 21100ms
     const estCycle = 21000;
     let roundIndex = Math.floor(diff / estCycle);
 
-    // Seeded round calculation to find exact cycle boundaries
     let rNum = 3000 + roundIndex;
     let crashTarget = generateCrashPoint(rNum * 7919);
     let flightMs = Math.round(getFlightDurationSec(crashTarget) * 1000);
     let totalRoundMs = CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs + CONFIG.TIMINGS.CRASHED_MS + CONFIG.TIMINGS.RESULT_MS;
 
     let cycleStart = epochBase + (roundIndex * estCycle);
-    // Align boundaries
     let offsetInCycle = (now - cycleStart) % totalRoundMs;
     if (offsetInCycle < 0) offsetInCycle += totalRoundMs;
 
@@ -640,16 +648,21 @@
   let sharedRound = Object.assign({}, initialEpochRound, { masterId: localSessionId });
 
   function isLocalMaster() {
+    // Admin or manual override is always supreme master authority
     if (savedState.userRole === "admin") return true;
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) return true;
+    
+    // Designated master in Firestore
     if (sharedRound.masterId === localSessionId) return true;
+    
+    // Fail-safe election if Firestore master has been silent for > 18s
     const timeSinceUpdate = Date.now() - (sharedRound.updatedAt || 0);
-    if (timeSinceUpdate > 6000) return true;
+    if (timeSinceUpdate > 18000) return true;
+    
     return false;
   }
 
   function initGlobalMultiplayerSync() {
-    // Start with deterministic epoch round clock
     const currentEpochSync = getEpochDeterministicRound(Date.now());
     roundNumber = currentEpochSync.roundNumber;
     crashMultiplier = currentEpochSync.crashMultiplier;
@@ -670,7 +683,7 @@
 
     globalRoundUnsubscribe = roundDocRef.onSnapshot(function (doc) {
       if (!doc.exists) {
-        publishSharedRoundState();
+        if (isLocalMaster()) publishSharedRoundState();
         hasReceivedFirstSnapshot = true;
         return;
       }
@@ -678,35 +691,33 @@
       const data = doc.data();
       hasReceivedFirstSnapshot = true;
 
-      // Ignore stale document updates older than 15 seconds
-      const now = Date.now();
-      if (data.updatedAt && (now - data.updatedAt) > 15000) {
-        return;
-      }
+      // Always accept server master round state
+      const oldRound = roundNumber;
+      sharedRound = Object.assign({}, data);
 
-      const oldRound = sharedRound.roundNumber;
-      sharedRound = Object.assign(sharedRound, data);
-
-      if (sharedRound.roundNumber && sharedRound.roundNumber !== oldRound) {
-        roundNumber = sharedRound.roundNumber;
+      if (data.roundNumber && Number(data.roundNumber) !== oldRound) {
+        roundNumber = Number(data.roundNumber);
         if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
         subscribeToActiveBets(roundNumber);
       }
 
-      if (typeof sharedRound.crashMultiplier === "number") {
-        crashMultiplier = sharedRound.crashMultiplier;
+      if (typeof data.crashMultiplier === "number") {
+        crashMultiplier = data.crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+        if (DOM.gmTargetInput && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
+          DOM.gmTargetInput.value = crashMultiplier.toFixed(2);
+        }
       }
 
-      if (typeof sharedRound.isPaused === "boolean" && sharedRound.isPaused !== isGamePaused) {
-        isGamePaused = sharedRound.isPaused;
+      if (typeof data.isPaused === "boolean" && data.isPaused !== isGamePaused) {
+        isGamePaused = data.isPaused;
         if (DOM.gmBtnPauseToggle) {
           DOM.gmBtnPauseToggle.textContent = isGamePaused ? "RESUME SIMULATION" : "PAUSE SIMULATION";
         }
       }
 
-      if (sharedRound.state && sharedRound.state !== gameState) {
-        applyStateTransition(sharedRound.state, true);
+      if (data.state && data.state !== gameState) {
+        applyStateTransition(data.state, true);
       }
     }, function (err) {
       console.warn("[AeroCrash] Multiplayer sync listener notice:", err.message);
@@ -715,12 +726,27 @@
 
   function publishSharedRoundState() {
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
+
+    // Follower clients do not overwrite active master state
+    if (savedState.userRole !== "admin" && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
+      if (sharedRound.masterId && sharedRound.masterId !== localSessionId) {
+        const timeSince = Date.now() - (sharedRound.updatedAt || 0);
+        if (timeSince < 18000) return;
+      }
+    }
+
     sharedRound.masterId = localSessionId;
     sharedRound.updatedAt = Date.now();
+    sharedRound.roundNumber = Number(roundNumber);
+    sharedRound.crashMultiplier = Number(crashMultiplier);
+    sharedRound.state = gameState;
+    if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+      sharedRound.manualOverride = true;
+    }
 
     window.AERO_FIREBASE.db.collection("game_state").doc("current_round").set(sharedRound, { merge: true })
       .then(function () {
-        console.log("[AeroCrash Multiplayer] Synced state to cloud:", sharedRound.state, "Round #" + sharedRound.roundNumber, "Target:", sharedRound.crashMultiplier + "x");
+        console.log("[AeroCrash Multiplayer] Cloud Sync -> State:", sharedRound.state, "Round #" + sharedRound.roundNumber, "Target:", sharedRound.crashMultiplier + "x");
       })
       .catch(function (err) {
         console.warn("[AeroCrash Multiplayer] Note on game_state write:", err.message);
@@ -1354,7 +1380,8 @@
     } else if (gameState === "RUNNING") {
       const fStart = sharedRound.launchStartTime || nowEpoch;
       const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
-      liveMultiplier = calculateMultiplier(elapsedSec);
+      const rawMulti = calculateMultiplier(elapsedSec);
+      liveMultiplier = Math.min(crashMultiplier, rawMulti);
 
       if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
       if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
@@ -1374,13 +1401,13 @@
         }
       });
 
-      // Crash trigger evaluated by Master Authority
-      if ((isManualCrashPending || liveMultiplier >= crashMultiplier) && isMaster) {
+      // Crash trigger evaluated (Clamps to crashMultiplier and crashes immediately)
+      if (isManualCrashPending || rawMulti >= crashMultiplier) {
         isManualCrashPending = false;
         sharedRound.state = "CRASHED";
         sharedRound.crashedAt = nowEpoch;
-        sharedRound.crashedMultiplier = liveMultiplier;
-        publishSharedRoundState();
+        sharedRound.crashedMultiplier = crashMultiplier;
+        if (isMaster) publishSharedRoundState();
         applyStateTransition("CRASHED");
       }
 
@@ -1497,33 +1524,91 @@
     ctx.translate(x, y);
     ctx.rotate(angle);
 
+    // Afterburner Twin Exhaust Glow & Dynamic Flames
     if (gameState === "RUNNING") {
-      ctx.shadowColor = "#ffffff";
-      ctx.shadowBlur = 14;
-      ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+      const flameLen = 14 + Math.random() * 8;
+      const flameW = 3.5 + Math.random() * 2;
+
+      // Outer orange/amber aura
+      ctx.save();
+      ctx.shadowColor = "#ff7700";
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = "rgba(255, 119, 0, 0.85)";
       ctx.beginPath();
-      ctx.arc(-14, 0, 3.5 + Math.random() * 2, 0, Math.PI * 2);
+      ctx.ellipse(-14, 0, flameLen, flameW, 0, 0, Math.PI * 2);
       ctx.fill();
-      ctx.shadowBlur = 0;
+
+      // Inner intense core (Yellow to White)
+      ctx.fillStyle = "rgba(255, 235, 150, 0.95)";
+      ctx.beginPath();
+      ctx.ellipse(-12, 0, flameLen * 0.55, flameW * 0.45, 0, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#ffffff";
+      ctx.beginPath();
+      ctx.ellipse(-10, 0, flameLen * 0.28, flameW * 0.25, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
 
-    ctx.fillStyle = "#e4e4e7";
+    // Modern Aerodynamic Jet Fuselage (Delta Wing)
+    ctx.fillStyle = "#f4f4f5";
     ctx.beginPath();
-    ctx.moveTo(14, 0);
-    ctx.lineTo(-4, -10);
-    ctx.lineTo(-2, -3);
-    ctx.lineTo(-12, -7);
-    ctx.lineTo(-10, 0);
-    ctx.lineTo(-12, 7);
-    ctx.lineTo(-2, 3);
-    ctx.lineTo(-4, 10);
+    ctx.moveTo(18, 0);          // Nose tip
+    ctx.lineTo(2, -4);          // Forward fuselage
+    ctx.lineTo(-4, -14);        // Port wingtip
+    ctx.lineTo(-7, -13);        // Wing trailing edge outer
+    ctx.lineTo(-5, -4);         // Wing root
+    ctx.lineTo(-13, -7);        // Port horizontal tail
+    ctx.lineTo(-15, -6);
+    ctx.lineTo(-13, 0);         // Engine nozzle center
+    ctx.lineTo(-15, 6);
+    ctx.lineTo(-13, 7);         // Starboard horizontal tail
+    ctx.lineTo(-5, 4);          // Wing root
+    ctx.lineTo(-7, 13);         // Wing trailing edge outer
+    ctx.lineTo(-4, 14);         // Starboard wingtip
+    ctx.lineTo(2, 4);           // Forward fuselage
     ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = "#ffffff";
+    // Fuselage accent panel lines (Subtle slate shading)
+    ctx.fillStyle = "#cbd5e1";
     ctx.beginPath();
-    ctx.arc(4, 0, 2.2, 0, Math.PI * 2);
+    ctx.moveTo(14, 0);
+    ctx.lineTo(-4, -3);
+    ctx.lineTo(-12, 0);
+    ctx.lineTo(-4, 3);
+    ctx.closePath();
     ctx.fill();
+
+    // Tinted Cockpit Glass Canopy
+    ctx.fillStyle = "rgba(14, 165, 233, 0.85)";
+    ctx.beginPath();
+    ctx.moveTo(8, 0);
+    ctx.lineTo(1, -2.2);
+    ctx.lineTo(-3, 0);
+    ctx.lineTo(1, 2.2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Canopy Reflection Sheen
+    ctx.fillStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.beginPath();
+    ctx.ellipse(3, -0.7, 3, 0.9, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Wingtip Nav Lights
+    if (gameState === "RUNNING") {
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.arc(-4, -14, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#22c55e";
+      ctx.beginPath();
+      ctx.arc(-4, 14, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     ctx.restore();
   }
@@ -1536,7 +1621,7 @@
     drawRadarBackground(ctx);
 
     const startX = 35;
-    const startY = canvasHeight - 28;
+    const startY = canvasHeight - 32;
 
     if (gameState === "BETTING" || gameState === "WAITING" || gameState === "LAUNCHING") {
       drawPlane(ctx, startX, startY, 0);
@@ -1546,16 +1631,17 @@
     if (gameState === "RUNNING") {
       const flightTime = Math.max(0, (Date.now() - (sharedRound.launchStartTime || Date.now())) / 1000);
       
-      const spanX = canvasWidth * 0.76;
-      const spanY = canvasHeight * 0.72;
+      // Leave at least 95px headroom from the top so it NEVER touches the top of the screen or telemetry boxes
+      const maxRise = Math.max(120, (canvasHeight - 110) * 0.62);
+      const maxSpanX = Math.max(200, canvasWidth - startX - 75);
       
       const t = flightTime;
       const factorX = 1 - Math.exp(-0.11 * t);
-      const factorY = Math.pow(factorX, 1.25);
-      const microTurbulence = Math.sin(t * 3.6) * (1.2 + Math.min(2.0, t * 0.1));
+      const factorY = 1 - Math.exp(-0.09 * t);
+      const microTurbulence = Math.sin(t * 2.8) * 1.5;
 
-      const currX = startX + spanX * factorX;
-      const currY = (startY - spanY * factorY) + microTurbulence;
+      const currX = startX + maxSpanX * factorX;
+      const currY = (startY - maxRise * factorY) + microTurbulence;
 
       if (liveTrail.length === 0) {
         liveTrail.push({ x: startX, y: startY });
@@ -1565,9 +1651,9 @@
       if (liveTrail.length > 1) {
         ctx.save();
         const fillGrad = ctx.createLinearGradient(0, 0, 0, canvasHeight);
-        fillGrad.addColorStop(0, "rgba(255, 255, 255, 0.14)");
-        fillGrad.addColorStop(0.7, "rgba(255, 255, 255, 0.02)");
-        fillGrad.addColorStop(1, "rgba(255, 255, 255, 0.0)");
+        fillGrad.addColorStop(0, "rgba(255, 107, 34, 0.16)");
+        fillGrad.addColorStop(0.7, "rgba(255, 107, 34, 0.03)");
+        fillGrad.addColorStop(1, "rgba(255, 107, 34, 0.0)");
 
         ctx.beginPath();
         ctx.moveTo(startX, startY);
@@ -1581,9 +1667,9 @@
         ctx.fill();
 
         ctx.beginPath();
-        ctx.strokeStyle = "#ffffff";
+        ctx.strokeStyle = "#ff6b22";
         ctx.lineWidth = 3.0;
-        ctx.shadowColor = "#ffffff";
+        ctx.shadowColor = "#ff7700";
         ctx.shadowBlur = 12;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
@@ -1595,7 +1681,7 @@
         ctx.restore();
       }
 
-      let angle = -0.35;
+      let angle = -0.30;
       if (liveTrail.length >= 2) {
         const p1 = liveTrail[liveTrail.length - 2];
         const p2 = liveTrail[liveTrail.length - 1];
@@ -1607,7 +1693,7 @@
     } else if (gameState === "CRASHED" || gameState === "RESULT") {
       if (liveTrail.length > 1) {
         ctx.save();
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+        ctx.strokeStyle = "rgba(255, 107, 34, 0.35)";
         ctx.lineWidth = 2.5;
         ctx.beginPath();
         ctx.moveTo(liveTrail[0].x, liveTrail[0].y);
@@ -2715,6 +2801,24 @@
         requestAnimationFrame(gameLoop);
       }
     }, 35);
+
+    document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) {
+        if (gameState === "RUNNING") {
+          const now = Date.now();
+          const fStart = sharedRound.launchStartTime || now;
+          const elapsedSec = Math.max(0, (now - fStart) / 1000);
+          const raw = calculateMultiplier(elapsedSec);
+          if (raw >= crashMultiplier) {
+            sharedRound.state = "CRASHED";
+            sharedRound.crashedAt = now;
+            sharedRound.crashedMultiplier = crashMultiplier;
+            applyStateTransition("CRASHED");
+          }
+        }
+        resizeCanvas();
+      }
+    });
   }
 
   window.addEventListener("DOMContentLoaded", init);
