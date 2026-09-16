@@ -1362,19 +1362,19 @@
       if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
       if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
 
-      if (elapsed >= CONFIG.TIMINGS.BETTING_MS && isMaster) {
+      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
         sharedRound.state = "LAUNCHING";
         sharedRound.launchingStartTime = nowEpoch;
-        publishSharedRoundState();
+        if (isMaster) publishSharedRoundState();
         applyStateTransition("LAUNCHING");
       }
     } else if (gameState === "LAUNCHING") {
       const lStart = sharedRound.launchingStartTime || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - lStart);
-      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS && isMaster) {
+      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
         sharedRound.state = "RUNNING";
         sharedRound.launchStartTime = nowEpoch;
-        publishSharedRoundState();
+        if (isMaster) publishSharedRoundState();
         applyStateTransition("RUNNING");
       }
     } else if (gameState === "RUNNING") {
@@ -1415,18 +1415,19 @@
     } else if (gameState === "CRASHED") {
       const cStart = sharedRound.crashedAt || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - cStart);
-      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS && isMaster) {
+      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
         sharedRound.state = "RESULT";
         sharedRound.resultStartTime = nowEpoch;
-        publishSharedRoundState();
+        if (isMaster) publishSharedRoundState();
         applyStateTransition("RESULT");
       }
     } else if (gameState === "RESULT") {
       const rStart = sharedRound.resultStartTime || nowEpoch;
       const elapsed = Math.max(0, nowEpoch - rStart);
-      if (elapsed >= CONFIG.TIMINGS.RESULT_MS && isMaster) {
+      if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
         const nextRound = (sharedRound.roundNumber || roundNumber) + 1;
         sharedRound.roundNumber = nextRound;
+        roundNumber = nextRound;
         if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
           sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
@@ -1438,7 +1439,7 @@
         sharedRound.bettingStartTime = nowEpoch;
         sharedRound.launchStartTime = 0;
         sharedRound.crashedAt = 0;
-        publishSharedRoundState();
+        if (isMaster) publishSharedRoundState();
         applyStateTransition("BETTING");
       }
     }
