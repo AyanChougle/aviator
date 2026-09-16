@@ -507,19 +507,27 @@
           snapshot.forEach(function (doc) {
             betsArr.push(doc.data());
           });
-          betsArr.sort(function (a, b) { return (a.placedAt || 0) - (b.placedAt || 0); });
+          betsArr.sort(function (a, b) {
+            const ta = (a.placedAt && a.placedAt.seconds ? a.placedAt.seconds * 1000 : (a.placedAt ? new Date(a.placedAt).getTime() : 0)) || 0;
+            const tb = (b.placedAt && b.placedAt.seconds ? b.placedAt.seconds * 1000 : (b.placedAt ? new Date(b.placedAt).getTime() : 0)) || 0;
+            return ta - tb;
+          });
           realSquadronBets = betsArr;
           renderSquadronTable();
         }, function (err) {
           console.warn("[AeroCrash] active_bets listener note:", err.message);
-          // Fallback snapshot
+          // Fallback query
           window.AERO_FIREBASE.db.collection("active_bets").limit(100).get().then(function (snap) {
             const betsArr = [];
             snap.forEach(function (doc) {
               const d = doc.data();
               if (Number(d.round) === rNum) betsArr.push(d);
             });
-            betsArr.sort(function (a, b) { return (a.placedAt || 0) - (b.placedAt || 0); });
+            betsArr.sort(function (a, b) {
+              const ta = (a.placedAt && a.placedAt.seconds ? a.placedAt.seconds * 1000 : (a.placedAt ? new Date(a.placedAt).getTime() : 0)) || 0;
+              const tb = (b.placedAt && b.placedAt.seconds ? b.placedAt.seconds * 1000 : (b.placedAt ? new Date(b.placedAt).getTime() : 0)) || 0;
+              return ta - tb;
+            });
             realSquadronBets = betsArr;
             renderSquadronTable();
           }).catch(function () {});
@@ -593,81 +601,36 @@
     return Math.max(0.5, Math.min(60, sec));
   }
 
-  // Get epoch deterministic round info for exact millisecond
-  function getEpochDeterministicRound(epochMs) {
-    const epochBase = 1710000000000; // Fixed reference epoch
-    const now = (typeof epochMs === "number") ? epochMs : Date.now();
-    const diff = Math.max(0, now - epochBase);
-
-    const estCycle = 21000;
-    let roundIndex = Math.floor(diff / estCycle);
-
-    let rNum = 3000 + roundIndex;
-    let crashTarget = generateCrashPoint(rNum * 7919);
-    let flightMs = Math.round(getFlightDurationSec(crashTarget) * 1000);
-    let totalRoundMs = CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs + CONFIG.TIMINGS.CRASHED_MS + CONFIG.TIMINGS.RESULT_MS;
-
-    let cycleStart = epochBase + (roundIndex * estCycle);
-    let offsetInCycle = (now - cycleStart) % totalRoundMs;
-    if (offsetInCycle < 0) offsetInCycle += totalRoundMs;
-
-    let rState = "BETTING";
-    let bStart = now - offsetInCycle;
-    let lStart = bStart + CONFIG.TIMINGS.BETTING_MS;
-    let runStart = lStart + CONFIG.TIMINGS.LAUNCHING_MS;
-    let crashStart = runStart + flightMs;
-    let resStart = crashStart + CONFIG.TIMINGS.CRASHED_MS;
-
-    if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS) {
-      rState = "BETTING";
-    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS) {
-      rState = "LAUNCHING";
-    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs) {
-      rState = "RUNNING";
-    } else if (offsetInCycle < CONFIG.TIMINGS.BETTING_MS + CONFIG.TIMINGS.LAUNCHING_MS + flightMs + CONFIG.TIMINGS.CRASHED_MS) {
-      rState = "CRASHED";
-    } else {
-      rState = "RESULT";
-    }
-
-    return {
-      roundNumber: rNum,
-      state: rState,
-      crashMultiplier: crashTarget,
-      bettingStartTime: bStart,
-      launchingStartTime: lStart,
-      launchStartTime: runStart,
-      crashedAt: crashStart,
-      resultStartTime: resStart,
-      masterId: "epoch_universal",
-      updatedAt: now
-    };
-  }
-
-  const initialEpochRound = getEpochDeterministicRound(Date.now());
-  let sharedRound = Object.assign({}, initialEpochRound, { masterId: localSessionId });
+  // Default shared round state structure
+  let sharedRound = {
+    roundNumber: 3000,
+    state: "BETTING",
+    crashMultiplier: 2.50,
+    bettingStartTime: Date.now(),
+    launchingStartTime: 0,
+    launchStartTime: 0,
+    crashedAt: 0,
+    resultStartTime: 0,
+    masterId: localSessionId,
+    updatedAt: Date.now()
+  };
 
   function isLocalMaster() {
-    // Admin or manual override is always supreme master authority
+    // Admin or GM manual override is always authoritative master
     if (savedState.userRole === "admin") return true;
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) return true;
     
-    // Designated master in Firestore
+    // Designated master session in Firestore
     if (sharedRound.masterId === localSessionId) return true;
     
-    // Fail-safe election if Firestore master has been silent for > 18s
+    // Seamless election: if no master or master has been silent for > 4.5 seconds
     const timeSinceUpdate = Date.now() - (sharedRound.updatedAt || 0);
-    if (timeSinceUpdate > 18000) return true;
+    if (!sharedRound.masterId || timeSinceUpdate > 4500) return true;
     
     return false;
   }
 
   function initGlobalMultiplayerSync() {
-    const currentEpochSync = getEpochDeterministicRound(Date.now());
-    roundNumber = currentEpochSync.roundNumber;
-    crashMultiplier = currentEpochSync.crashMultiplier;
-    sharedRound = Object.assign(sharedRound, currentEpochSync);
-
     if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
     if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
     subscribeToActiveBets(roundNumber);
@@ -689,14 +652,16 @@
       }
 
       const data = doc.data();
+      if (!data) return;
       hasReceivedFirstSnapshot = true;
 
-      // Always accept server master round state
-      const oldRound = roundNumber;
-      sharedRound = Object.assign({}, data);
+      const incomingRound = Number(data.roundNumber) || roundNumber;
+      const isNewRound = incomingRound !== roundNumber;
+      
+      sharedRound = Object.assign({}, sharedRound, data);
 
-      if (data.roundNumber && Number(data.roundNumber) !== oldRound) {
-        roundNumber = Number(data.roundNumber);
+      if (isNewRound) {
+        roundNumber = incomingRound;
         if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
         subscribeToActiveBets(roundNumber);
       }
@@ -727,13 +692,7 @@
   function publishSharedRoundState() {
     if (!window.AERO_FIREBASE || !window.AERO_FIREBASE.db) return;
 
-    // Follower clients do not overwrite active master state
-    if (savedState.userRole !== "admin" && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
-      if (sharedRound.masterId && sharedRound.masterId !== localSessionId) {
-        const timeSince = Date.now() - (sharedRound.updatedAt || 0);
-        if (timeSince < 18000) return;
-      }
-    }
+    if (!isLocalMaster()) return;
 
     sharedRound.masterId = localSessionId;
     sharedRound.updatedAt = Date.now();
@@ -742,12 +701,11 @@
     sharedRound.state = gameState;
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
       sharedRound.manualOverride = true;
+    } else {
+      sharedRound.manualOverride = false;
     }
 
     window.AERO_FIREBASE.db.collection("game_state").doc("current_round").set(sharedRound, { merge: true })
-      .then(function () {
-        console.log("[AeroCrash Multiplayer] Cloud Sync -> State:", sharedRound.state, "Round #" + sharedRound.roundNumber, "Target:", sharedRound.crashMultiplier + "x");
-      })
       .catch(function (err) {
         console.warn("[AeroCrash Multiplayer] Note on game_state write:", err.message);
       });
@@ -1353,94 +1311,138 @@
     const nowEpoch = Date.now();
     const isMaster = isLocalMaster();
 
-    if (gameState === "BETTING") {
-      const bStart = sharedRound.bettingStartTime || nowEpoch;
-      const elapsed = Math.max(0, nowEpoch - bStart);
-      const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
-      const secondsLeft = Math.ceil(remaining / 1000);
+    if (isMaster) {
+      // MASTER COORDINATOR: Advances round state transitions and publishes authoritative clock
+      if (gameState === "BETTING") {
+        const bStart = sharedRound.bettingStartTime || nowEpoch;
+        const elapsed = Math.max(0, nowEpoch - bStart);
+        const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
+        const secondsLeft = Math.ceil(remaining / 1000);
 
-      if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
-      if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
+        if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
+        if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
 
-      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
-        sharedRound.state = "LAUNCHING";
-        sharedRound.launchingStartTime = nowEpoch;
-        if (isMaster) publishSharedRoundState();
-        applyStateTransition("LAUNCHING");
-      }
-    } else if (gameState === "LAUNCHING") {
-      const lStart = sharedRound.launchingStartTime || nowEpoch;
-      const elapsed = Math.max(0, nowEpoch - lStart);
-      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
-        sharedRound.state = "RUNNING";
-        sharedRound.launchStartTime = nowEpoch;
-        if (isMaster) publishSharedRoundState();
-        applyStateTransition("RUNNING");
-      }
-    } else if (gameState === "RUNNING") {
-      const fStart = sharedRound.launchStartTime || nowEpoch;
-      const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
-      const rawMulti = calculateMultiplier(elapsedSec);
-      liveMultiplier = Math.min(crashMultiplier, rawMulti);
+        if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
+          sharedRound.state = "LAUNCHING";
+          sharedRound.launchingStartTime = nowEpoch;
+          publishSharedRoundState();
+          applyStateTransition("LAUNCHING");
+        }
+      } else if (gameState === "LAUNCHING") {
+        const lStart = sharedRound.launchingStartTime || nowEpoch;
+        const elapsed = Math.max(0, nowEpoch - lStart);
+        if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
+          sharedRound.state = "RUNNING";
+          sharedRound.launchStartTime = nowEpoch;
+          publishSharedRoundState();
+          applyStateTransition("RUNNING");
+        }
+      } else if (gameState === "RUNNING") {
+        const fStart = sharedRound.launchStartTime || nowEpoch;
+        const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
+        const rawMulti = calculateMultiplier(elapsedSec);
+        liveMultiplier = Math.min(crashMultiplier, rawMulti);
 
-      if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
-      if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
-      if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
 
-      if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
-      if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
-      if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
+        if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
+        if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
+        if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
 
-      // Auto Cashout checks for all active slots
-      activeSlotIds.forEach(function (slotId) {
-        const b = bets[slotId];
-        if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
-          if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
-            cashOut(slotId);
+        // Auto Cashout checks for all active slots
+        activeSlotIds.forEach(function (slotId) {
+          const b = bets[slotId];
+          if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
+            if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
+              cashOut(slotId);
+            }
+          }
+        });
+
+        // Crash trigger evaluated
+        if (isManualCrashPending || rawMulti >= crashMultiplier) {
+          isManualCrashPending = false;
+          sharedRound.state = "CRASHED";
+          sharedRound.crashedAt = nowEpoch;
+          sharedRound.crashedMultiplier = crashMultiplier;
+          publishSharedRoundState();
+          applyStateTransition("CRASHED");
+        } else {
+          // Heartbeat sync every 1.5s
+          if (nowEpoch - (sharedRound.updatedAt || 0) > 1500) {
+            publishSharedRoundState();
           }
         }
-      });
 
-      // Crash trigger evaluated (Clamps to crashMultiplier and crashes immediately)
-      if (isManualCrashPending || rawMulti >= crashMultiplier) {
-        isManualCrashPending = false;
-        sharedRound.state = "CRASHED";
-        sharedRound.crashedAt = nowEpoch;
-        sharedRound.crashedMultiplier = crashMultiplier;
-        if (isMaster) publishSharedRoundState();
-        applyStateTransition("CRASHED");
-      }
-
-      updateActionButtons();
-    } else if (gameState === "CRASHED") {
-      const cStart = sharedRound.crashedAt || nowEpoch;
-      const elapsed = Math.max(0, nowEpoch - cStart);
-      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
-        sharedRound.state = "RESULT";
-        sharedRound.resultStartTime = nowEpoch;
-        if (isMaster) publishSharedRoundState();
-        applyStateTransition("RESULT");
-      }
-    } else if (gameState === "RESULT") {
-      const rStart = sharedRound.resultStartTime || nowEpoch;
-      const elapsed = Math.max(0, nowEpoch - rStart);
-      if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
-        const nextRound = (sharedRound.roundNumber || roundNumber) + 1;
-        sharedRound.roundNumber = nextRound;
-        roundNumber = nextRound;
-        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
-          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
-          sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
-        } else {
-          sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+        updateActionButtons();
+      } else if (gameState === "CRASHED") {
+        const cStart = sharedRound.crashedAt || nowEpoch;
+        const elapsed = Math.max(0, nowEpoch - cStart);
+        if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
+          sharedRound.state = "RESULT";
+          sharedRound.resultStartTime = nowEpoch;
+          publishSharedRoundState();
+          applyStateTransition("RESULT");
         }
-        crashMultiplier = sharedRound.crashMultiplier;
-        sharedRound.state = "BETTING";
-        sharedRound.bettingStartTime = nowEpoch;
-        sharedRound.launchStartTime = 0;
-        sharedRound.crashedAt = 0;
-        if (isMaster) publishSharedRoundState();
-        applyStateTransition("BETTING");
+      } else if (gameState === "RESULT") {
+        const rStart = sharedRound.resultStartTime || nowEpoch;
+        const elapsed = Math.max(0, nowEpoch - rStart);
+        if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
+          const nextRound = (Number(sharedRound.roundNumber) || roundNumber) + 1;
+          sharedRound.roundNumber = nextRound;
+          roundNumber = nextRound;
+          if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+            const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
+            sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+          } else {
+            sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+          }
+          crashMultiplier = sharedRound.crashMultiplier;
+          sharedRound.state = "BETTING";
+          sharedRound.bettingStartTime = nowEpoch;
+          sharedRound.launchStartTime = 0;
+          sharedRound.crashedAt = 0;
+          publishSharedRoundState();
+          applyStateTransition("BETTING");
+        }
+      }
+    } else {
+      // FOLLOWER: Follows authoritative master timestamps with zero clock drift
+      if (gameState === "BETTING") {
+        const bStart = sharedRound.bettingStartTime || nowEpoch;
+        const elapsed = Math.max(0, nowEpoch - bStart);
+        const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
+        const secondsLeft = Math.ceil(remaining / 1000);
+
+        if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
+        if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
+      } else if (gameState === "RUNNING") {
+        const fStart = sharedRound.launchStartTime || nowEpoch;
+        const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
+        const rawMulti = calculateMultiplier(elapsedSec);
+        liveMultiplier = Math.min(crashMultiplier, rawMulti);
+
+        if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
+        if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
+
+        if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
+        if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
+        if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
+
+        // Auto Cashout checks for all active slots
+        activeSlotIds.forEach(function (slotId) {
+          const b = bets[slotId];
+          if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
+            if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
+              cashOut(slotId);
+            }
+          }
+        });
+
+        updateActionButtons();
       }
     }
 
