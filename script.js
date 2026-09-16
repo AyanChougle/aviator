@@ -1614,7 +1614,11 @@
   }
 
   function renderCanvas() {
-    if (!canvasCtx) return;
+    if (!DOM.canvas) return;
+    if (!canvasCtx || canvasWidth <= 0 || canvasHeight <= 0) {
+      resizeCanvas();
+      if (!canvasCtx) return;
+    }
     const ctx = canvasCtx;
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
