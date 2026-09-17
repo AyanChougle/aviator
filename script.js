@@ -445,25 +445,33 @@
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   }
 
-  function generateCrashPoint(roundSeed) {
+  function generateCrashPoint() {
+    // 1. If Manual Override checkbox is explicitly checked, strictly use the GM manual target
     if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked && DOM.gmTargetInput) {
       const manual = parseFloat(DOM.gmTargetInput.value);
       if (!isNaN(manual) && manual >= 1.05) {
         return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(manual * 100) / 100);
       }
     }
-    const r = (typeof roundSeed === "number") ? seededRandom(roundSeed) : Math.random();
+
+    // 2. Otherwise: 100% AUTO MODE FOREVER with dynamic, exciting, unpredictable crash curve
+    const r = Math.random();
     let point = 1.15;
-    if (r < 0.12) {
-      point = 1.10 + (r / 0.12) * 0.25; // 1.10x - 1.35x
-    } else if (r < 0.55) {
-      point = 1.36 + ((r - 0.12) / 0.43) * 1.44; // 1.36x - 2.80x
-    } else if (r < 0.82) {
-      point = 2.81 + ((r - 0.55) / 0.27) * 2.69; // 2.81x - 5.50x
-    } else if (r < 0.94) {
-      point = 5.51 + ((r - 0.82) / 0.12) * 6.49; // 5.51x - 12.00x
+    if (r < 0.10) {
+      // 10% chance: Instant/early low crash (1.05x - 1.30x)
+      point = 1.05 + Math.random() * 0.25;
+    } else if (r < 0.50) {
+      // 40% chance: Standard safe climb (1.31x - 2.80x)
+      point = 1.31 + Math.random() * 1.49;
+    } else if (r < 0.78) {
+      // 28% chance: Medium profit zone (2.81x - 6.50x)
+      point = 2.81 + Math.random() * 3.69;
+    } else if (r < 0.93) {
+      // 15% chance: High altitude zone (6.51x - 22.00x)
+      point = 6.51 + Math.random() * 15.49;
     } else {
-      point = 12.01 + ((r - 0.94) / 0.06) * 187.99; // 12.01x - 200.00x
+      // 7% chance: Stratospheric Mega-Multiplier (22.01x - 200.00x)
+      point = 22.01 + Math.random() * 177.99;
     }
     return Math.min(MAX_POSSIBLE_MULTIPLIER, Math.floor(point * 100) / 100);
   }
@@ -1525,8 +1533,11 @@
         if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
           sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+          sharedRound.manualOverride = true;
         } else {
-          sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+          // 100% AUTO MODE FOREVER: fresh, dynamic, unpredictable multiplier every round
+          sharedRound.crashMultiplier = generateCrashPoint();
+          sharedRound.manualOverride = false;
         }
         crashMultiplier = sharedRound.crashMultiplier;
         sharedRound.state = "BETTING";
@@ -2446,13 +2457,8 @@
         if (DOM.drawerGM) DOM.drawerGM.classList.add("active");
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.gmTargetInput && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
-          DOM.gmTargetInput.value = crashMultiplier.toFixed(2);
-          gmPresetBtns.forEach(function (b) {
-            const bVal = parseFloat(b.getAttribute("data-multi"));
-            if (Math.abs(bVal - crashMultiplier) < 0.01) b.classList.add("selected");
-            else b.classList.remove("selected");
-          });
+        if (DOM.gmTargetInput && (!DOM.gmTargetInput.value || parseFloat(DOM.gmTargetInput.value) <= 1)) {
+          DOM.gmTargetInput.value = "15.00";
         }
       });
     }
@@ -2469,16 +2475,20 @@
         if (isNaN(multiVal)) return;
 
         if (DOM.gmTargetInput) DOM.gmTargetInput.value = multiVal.toFixed(2);
-        if (DOM.gmOverrideEnabled) DOM.gmOverrideEnabled.checked = true;
-
         gmPresetBtns.forEach(function (b) { b.classList.remove("selected"); });
         btn.classList.add("selected");
 
-        crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, multiVal);
-        sharedRound.crashMultiplier = crashMultiplier;
-        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-        publishSharedRoundState();
-        console.log("[Game Master] Target multiplier set via preset:", crashMultiplier.toFixed(2) + "x");
+        // ONLY apply manual multiplier if the checkbox is explicitly checked
+        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+          crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, multiVal);
+          sharedRound.crashMultiplier = crashMultiplier;
+          sharedRound.manualOverride = true;
+          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          publishSharedRoundState();
+          showActionFeedback("MANUAL TARGET SET: " + crashMultiplier.toFixed(2) + "x", "warning");
+        } else {
+          showActionFeedback("Target set to " + multiVal.toFixed(2) + "x (Check box to activate manual mode)", "info");
+        }
       });
     });
 
@@ -2489,9 +2499,10 @@
           sharedRound.state = "CRASHED";
           sharedRound.crashedAt = Date.now();
           sharedRound.crashedMultiplier = liveMultiplier;
+          sharedRound.manualOverride = true;
           publishSharedRoundState();
           applyStateTransition("CRASHED");
-          console.log("[Game Master] Force Crash executed at", liveMultiplier.toFixed(2) + "x");
+          showActionFeedback("FORCE CRASH TRIGGERED @ " + liveMultiplier.toFixed(2) + "x", "danger");
         }
       });
     }
@@ -2513,18 +2524,20 @@
       DOM.gmTargetInput.addEventListener("input", function () {
         const manual = parseFloat(DOM.gmTargetInput.value);
         if (!isNaN(manual) && manual >= 1.05) {
-          if (DOM.gmOverrideEnabled) DOM.gmOverrideEnabled.checked = true;
-
           gmPresetBtns.forEach(function (b) {
             const bVal = parseFloat(b.getAttribute("data-multi"));
-            if (bVal === manual) b.classList.add("selected");
+            if (Math.abs(bVal - manual) < 0.01) b.classList.add("selected");
             else b.classList.remove("selected");
           });
 
-          crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
-          sharedRound.crashMultiplier = crashMultiplier;
-          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-          publishSharedRoundState();
+          // ONLY apply manual multiplier if the checkbox is explicitly checked
+          if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+            crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+            sharedRound.crashMultiplier = crashMultiplier;
+            sharedRound.manualOverride = true;
+            if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+            publishSharedRoundState();
+          }
         }
       });
     }
@@ -2533,10 +2546,16 @@
         if (DOM.gmOverrideEnabled.checked) {
           const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.0) || 15.0;
           crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+          sharedRound.crashMultiplier = crashMultiplier;
+          sharedRound.manualOverride = true;
+          showActionFeedback("MANUAL MODE ACTIVE // " + crashMultiplier.toFixed(2) + "x", "warning");
         } else {
-          crashMultiplier = generateCrashPoint(roundNumber * 7919);
+          // Revert to 100% Auto Mode
+          sharedRound.manualOverride = false;
+          crashMultiplier = generateCrashPoint();
+          sharedRound.crashMultiplier = crashMultiplier;
+          showActionFeedback("AUTO MODE ACTIVE FOREVER // PROVABLY FAIR", "info");
         }
-        sharedRound.crashMultiplier = crashMultiplier;
         if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
         publishSharedRoundState();
       });
