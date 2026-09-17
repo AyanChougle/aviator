@@ -655,34 +655,31 @@
       if (!data) return;
       hasReceivedFirstSnapshot = true;
 
-      const incomingRound = Number(data.roundNumber) || roundNumber;
-      const isNewRound = incomingRound !== roundNumber;
-      
-      sharedRound = Object.assign({}, sharedRound, data);
+      // Only align with fresh master updates within 12 seconds
+      const timeSinceUpdate = Date.now() - (data.updatedAt || 0);
+      if (timeSinceUpdate < 12000) {
+        const incomingRound = Number(data.roundNumber) || roundNumber;
+        const isNewRound = incomingRound !== roundNumber;
+        
+        sharedRound = Object.assign({}, sharedRound, data);
 
-      if (isNewRound) {
-        roundNumber = incomingRound;
-        if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
-        subscribeToActiveBets(roundNumber);
-      }
-
-      if (typeof data.crashMultiplier === "number") {
-        crashMultiplier = data.crashMultiplier;
-        if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
-        if (DOM.gmTargetInput && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
-          DOM.gmTargetInput.value = crashMultiplier.toFixed(2);
+        if (isNewRound) {
+          roundNumber = incomingRound;
+          if (DOM.roundPill) DOM.roundPill.textContent = "ROUND #" + roundNumber;
+          subscribeToActiveBets(roundNumber);
         }
-      }
 
-      if (typeof data.isPaused === "boolean" && data.isPaused !== isGamePaused) {
-        isGamePaused = data.isPaused;
-        if (DOM.gmBtnPauseToggle) {
-          DOM.gmBtnPauseToggle.textContent = isGamePaused ? "RESUME SIMULATION" : "PAUSE SIMULATION";
+        if (typeof data.crashMultiplier === "number") {
+          crashMultiplier = data.crashMultiplier;
+          if (DOM.debugTargetMulti) DOM.debugTargetMulti.textContent = crashMultiplier.toFixed(2) + "x";
+          if (DOM.gmTargetInput && (!DOM.gmOverrideEnabled || !DOM.gmOverrideEnabled.checked)) {
+            DOM.gmTargetInput.value = crashMultiplier.toFixed(2);
+          }
         }
-      }
 
-      if (data.state && data.state !== gameState) {
-        applyStateTransition(data.state, true);
+        if (data.state && data.state !== gameState) {
+          applyStateTransition(data.state, true);
+        }
       }
     }, function (err) {
       console.warn("[AeroCrash] Multiplayer sync listener notice:", err.message);
@@ -1303,146 +1300,109 @@
   // MAIN ANIMATION & UNIVERSAL SIMULATION LOOP
   //====================================================================
   function gameLoop() {
-    if (isGamePaused) {
+    // Only pause if admin explicitly toggled pause in Game Master portal
+    if (isGamePaused && savedState.userRole === "admin") {
       requestAnimationFrame(gameLoop);
       return;
     }
+    isGamePaused = false;
 
     const nowEpoch = Date.now();
     const isMaster = isLocalMaster();
 
-    if (isMaster) {
-      // MASTER COORDINATOR: Advances round state transitions and publishes authoritative clock
-      if (gameState === "BETTING") {
-        const bStart = sharedRound.bettingStartTime || nowEpoch;
-        const elapsed = Math.max(0, nowEpoch - bStart);
-        const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
-        const secondsLeft = Math.ceil(remaining / 1000);
+    if (gameState === "BETTING") {
+      const bStart = sharedRound.bettingStartTime || nowEpoch;
+      const elapsed = Math.max(0, nowEpoch - bStart);
+      const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
+      const secondsLeft = Math.ceil(remaining / 1000);
 
-        if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
-        if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
+      if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
+      if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
 
-        if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
-          sharedRound.state = "LAUNCHING";
-          sharedRound.launchingStartTime = nowEpoch;
-          publishSharedRoundState();
-          applyStateTransition("LAUNCHING");
-        }
-      } else if (gameState === "LAUNCHING") {
-        const lStart = sharedRound.launchingStartTime || nowEpoch;
-        const elapsed = Math.max(0, nowEpoch - lStart);
-        if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
-          sharedRound.state = "RUNNING";
-          sharedRound.launchStartTime = nowEpoch;
-          publishSharedRoundState();
-          applyStateTransition("RUNNING");
-        }
-      } else if (gameState === "RUNNING") {
-        const fStart = sharedRound.launchStartTime || nowEpoch;
-        const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
-        const rawMulti = calculateMultiplier(elapsedSec);
-        liveMultiplier = Math.min(crashMultiplier, rawMulti);
+      if (elapsed >= CONFIG.TIMINGS.BETTING_MS) {
+        sharedRound.state = "LAUNCHING";
+        sharedRound.launchingStartTime = nowEpoch;
+        if (isMaster) publishSharedRoundState();
+        applyStateTransition("LAUNCHING");
+      }
+    } else if (gameState === "LAUNCHING") {
+      const lStart = sharedRound.launchingStartTime || nowEpoch;
+      const elapsed = Math.max(0, nowEpoch - lStart);
+      if (elapsed >= CONFIG.TIMINGS.LAUNCHING_MS) {
+        sharedRound.state = "RUNNING";
+        sharedRound.launchStartTime = nowEpoch;
+        if (isMaster) publishSharedRoundState();
+        applyStateTransition("RUNNING");
+      }
+    } else if (gameState === "RUNNING") {
+      const fStart = sharedRound.launchStartTime || nowEpoch;
+      const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
+      const rawMulti = calculateMultiplier(elapsedSec);
+      liveMultiplier = Math.min(crashMultiplier, rawMulti);
 
-        if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
+      if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
+      if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
+      if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
 
-        if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
-        if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
-        if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
+      if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
+      if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
+      if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
 
-        // Auto Cashout checks for all active slots
-        activeSlotIds.forEach(function (slotId) {
-          const b = bets[slotId];
-          if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
-            if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
-              cashOut(slotId);
-            }
-          }
-        });
-
-        // Crash trigger evaluated
-        if (isManualCrashPending || rawMulti >= crashMultiplier) {
-          isManualCrashPending = false;
-          sharedRound.state = "CRASHED";
-          sharedRound.crashedAt = nowEpoch;
-          sharedRound.crashedMultiplier = crashMultiplier;
-          publishSharedRoundState();
-          applyStateTransition("CRASHED");
-        } else {
-          // Heartbeat sync every 1.5s
-          if (nowEpoch - (sharedRound.updatedAt || 0) > 1500) {
-            publishSharedRoundState();
+      // Auto Cashout checks for all active slots
+      activeSlotIds.forEach(function (slotId) {
+        const b = bets[slotId];
+        if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
+          if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
+            cashOut(slotId);
           }
         }
+      });
 
-        updateActionButtons();
-      } else if (gameState === "CRASHED") {
-        const cStart = sharedRound.crashedAt || nowEpoch;
-        const elapsed = Math.max(0, nowEpoch - cStart);
-        if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
-          sharedRound.state = "RESULT";
-          sharedRound.resultStartTime = nowEpoch;
+      // Crash trigger evaluated
+      if (isManualCrashPending || rawMulti >= crashMultiplier) {
+        isManualCrashPending = false;
+        sharedRound.state = "CRASHED";
+        sharedRound.crashedAt = nowEpoch;
+        sharedRound.crashedMultiplier = crashMultiplier;
+        if (isMaster) publishSharedRoundState();
+        applyStateTransition("CRASHED");
+      } else if (isMaster) {
+        // Master periodic heartbeat every 1.5s
+        if (nowEpoch - (sharedRound.updatedAt || 0) > 1500) {
           publishSharedRoundState();
-          applyStateTransition("RESULT");
-        }
-      } else if (gameState === "RESULT") {
-        const rStart = sharedRound.resultStartTime || nowEpoch;
-        const elapsed = Math.max(0, nowEpoch - rStart);
-        if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
-          const nextRound = (Number(sharedRound.roundNumber) || roundNumber) + 1;
-          sharedRound.roundNumber = nextRound;
-          roundNumber = nextRound;
-          if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
-            const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
-            sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
-          } else {
-            sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
-          }
-          crashMultiplier = sharedRound.crashMultiplier;
-          sharedRound.state = "BETTING";
-          sharedRound.bettingStartTime = nowEpoch;
-          sharedRound.launchStartTime = 0;
-          sharedRound.crashedAt = 0;
-          publishSharedRoundState();
-          applyStateTransition("BETTING");
         }
       }
-    } else {
-      // FOLLOWER: Follows authoritative master timestamps with zero clock drift
-      if (gameState === "BETTING") {
-        const bStart = sharedRound.bettingStartTime || nowEpoch;
-        const elapsed = Math.max(0, nowEpoch - bStart);
-        const remaining = Math.max(0, CONFIG.TIMINGS.BETTING_MS - elapsed);
-        const secondsLeft = Math.ceil(remaining / 1000);
 
-        if (DOM.countdownDigits) DOM.countdownDigits.textContent = secondsLeft;
-        if (secondsLeft <= 3 && Math.floor(remaining) % 1000 < 50) soundCountdown();
-      } else if (gameState === "RUNNING") {
-        const fStart = sharedRound.launchStartTime || nowEpoch;
-        const elapsedSec = Math.max(0, (nowEpoch - fStart) / 1000);
-        const rawMulti = calculateMultiplier(elapsedSec);
-        liveMultiplier = Math.min(crashMultiplier, rawMulti);
-
-        if (DOM.hudMultiplier) DOM.hudMultiplier.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.headerFlightMulti) DOM.headerFlightMulti.textContent = liveMultiplier.toFixed(2) + "x";
-        if (DOM.debugLiveMulti) DOM.debugLiveMulti.textContent = liveMultiplier.toFixed(2) + "x";
-
-        if (DOM.telemAlt) DOM.telemAlt.textContent = Math.floor(liveMultiplier * 1420).toLocaleString() + " FT";
-        if (DOM.telemVel) DOM.telemVel.textContent = Math.floor(liveMultiplier * 360) + " KTS";
-        if (DOM.telemTraj) DOM.telemTraj.textContent = Math.min(78, (liveMultiplier * 14.5)).toFixed(1) + "°";
-
-        // Auto Cashout checks for all active slots
-        activeSlotIds.forEach(function (slotId) {
-          const b = bets[slotId];
-          if (b && b.autoCashout && b.isPlaced && !b.isCashedOut) {
-            if (b.autoCashoutVal > 1.0 && liveMultiplier >= b.autoCashoutVal) {
-              cashOut(slotId);
-            }
-          }
-        });
-
-        updateActionButtons();
+      updateActionButtons();
+    } else if (gameState === "CRASHED") {
+      const cStart = sharedRound.crashedAt || nowEpoch;
+      const elapsed = Math.max(0, nowEpoch - cStart);
+      if (elapsed >= CONFIG.TIMINGS.CRASHED_MS) {
+        sharedRound.state = "RESULT";
+        sharedRound.resultStartTime = nowEpoch;
+        if (isMaster) publishSharedRoundState();
+        applyStateTransition("RESULT");
+      }
+    } else if (gameState === "RESULT") {
+      const rStart = sharedRound.resultStartTime || nowEpoch;
+      const elapsed = Math.max(0, nowEpoch - rStart);
+      if (elapsed >= CONFIG.TIMINGS.RESULT_MS) {
+        const nextRound = (Number(sharedRound.roundNumber) || roundNumber) + 1;
+        sharedRound.roundNumber = nextRound;
+        roundNumber = nextRound;
+        if (DOM.gmOverrideEnabled && DOM.gmOverrideEnabled.checked) {
+          const manual = parseFloat(DOM.gmTargetInput ? DOM.gmTargetInput.value : 15.00) || 15.00;
+          sharedRound.crashMultiplier = Math.min(MAX_POSSIBLE_MULTIPLIER, manual);
+        } else {
+          sharedRound.crashMultiplier = generateCrashPoint(nextRound * 7919);
+        }
+        crashMultiplier = sharedRound.crashMultiplier;
+        sharedRound.state = "BETTING";
+        sharedRound.bettingStartTime = nowEpoch;
+        sharedRound.launchStartTime = 0;
+        sharedRound.crashedAt = 0;
+        if (isMaster) publishSharedRoundState();
+        applyStateTransition("BETTING");
       }
     }
 
